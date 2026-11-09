@@ -1,0 +1,12 @@
+.git
+.github
+.gradle
+.idea
+.vscode
+build
+out
+*.iml
+*.md
+compose.yaml
+.env
+.env.*
