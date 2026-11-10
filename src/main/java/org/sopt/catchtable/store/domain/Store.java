@@ -59,8 +59,4 @@ public class Store {
 
     @Column(name = "thumbnail_url", nullable = false, length = 500)
     private String thumbnailUrl;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "paired_store_id")
-    private Store pairedStore;
 }

@@ -39,8 +39,7 @@ public class VoteCandidate {
     @Column(
             name = "display_order",
             nullable = false,
-            updatable = false,
-            columnDefinition = "TINYINT"
+            updatable = false
     )
     private Byte displayOrder;
 }

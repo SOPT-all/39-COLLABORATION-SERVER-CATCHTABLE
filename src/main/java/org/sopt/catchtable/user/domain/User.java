@@ -20,6 +20,6 @@ public class User {
     @Column(nullable = false, length = 15)
     private String nickname;
 
-    @Column(name = "created_at", nullable = false, columnDefinition = "DATETIME")
+    @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 }

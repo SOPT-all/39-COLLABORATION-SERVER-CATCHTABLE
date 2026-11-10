@@ -15,10 +15,12 @@ import java.time.LocalDateTime;
                 @UniqueConstraint(
                         name = "uk_ballots_vote_user",
                         columnNames = {"vote_id", "user_id"}
-                ),
-                @UniqueConstraint(
-                        name = "uk_ballots_vote_anonymous_no",
-                        columnNames = {"vote_id", "anonymous_no"}
+                )
+        },
+        indexes = {
+                @Index(
+                        name = "idx_ballots_candidate",
+                        columnList = "candidate_id"
                 )
         }
 )
@@ -38,23 +40,13 @@ public class Ballot {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @Enumerated(EnumType.STRING)
-    @Column(
-            name = "name_type",
-            nullable = false,
-            columnDefinition = "VARCHAR(10)"
-    )
-    private NameType nameType;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "candidate_id", nullable = false)
+    private VoteCandidate candidate;
 
-    @Column(name = "display_name", nullable = false, length = 20)
+    @Column(name = "display_name", nullable = false, length = 15)
     private String displayName;
 
-    @Column(name = "anonymous_no")
-    private Integer anonymousNo;
-
-    @Column(name = "created_at", nullable = false, columnDefinition = "DATETIME")
+    @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
-
-    @Column(name = "updated_at", nullable = false, columnDefinition = "DATETIME")
-    private LocalDateTime updatedAt;
 }
