@@ -4,12 +4,13 @@ import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.sopt.catchtable.global.domain.BaseEntity;
 
 @Entity
 @Table(name = "store_ai_summaries")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class StoreAiSummary {
+public class StoreAiSummary extends BaseEntity {
 
     @Id
     @Column(name = "store_id")

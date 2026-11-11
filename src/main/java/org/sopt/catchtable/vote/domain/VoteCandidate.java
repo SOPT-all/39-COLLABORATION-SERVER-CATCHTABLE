@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.sopt.catchtable.global.domain.BaseEntity;
 import org.sopt.catchtable.store.domain.Store;
 
 @Entity
@@ -22,7 +23,7 @@ import org.sopt.catchtable.store.domain.Store;
 )
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class VoteCandidate {
+public class VoteCandidate extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -41,5 +42,5 @@ public class VoteCandidate {
             nullable = false,
             updatable = false
     )
-    private Byte displayOrder;
+    private Integer displayOrder;
 }

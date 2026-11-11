@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.sopt.catchtable.global.domain.BaseEntity;
 import org.sopt.catchtable.user.domain.User;
 
 import java.time.LocalDateTime;
@@ -20,7 +21,7 @@ import java.time.LocalDateTime;
 )
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class Vote {
+public class Vote extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -40,9 +41,6 @@ public class Vote {
             columnDefinition = "VARCHAR(10) DEFAULT 'OPEN'"
     )
     private VoteStatus status = VoteStatus.OPEN;
-
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
 
     @Column(name = "closed_at")
     private LocalDateTime closedAt;

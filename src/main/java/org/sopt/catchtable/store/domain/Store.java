@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.sopt.catchtable.global.domain.BaseEntity;
 
 import java.math.BigDecimal;
 
@@ -11,7 +12,7 @@ import java.math.BigDecimal;
 @Table(name = "stores")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class Store {
+public class Store extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -56,7 +57,4 @@ public class Store {
 
     @Column(length = 20)
     private String phone;
-
-    @Column(name = "thumbnail_url", nullable = false, length = 500)
-    private String thumbnailUrl;
 }
