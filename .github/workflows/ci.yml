@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    # CI 전용 일회성 DB라 비밀값 아님
+    env:
+      DB_URL: jdbc:mysql://localhost:3306/catchtable
+      DB_USERNAME: root
+      DB_PASSWORD: root
+
+    # services는 env 컨텍스트를 참조할 수 없어 MYSQL_ROOT_PASSWORD를 DB_PASSWORD와 직접 맞춘다
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_DATABASE: catchtable
+          MYSQL_ROOT_PASSWORD: root
+        ports:
+          - 3306:3306
+        # ping은 인증 없이도 기동 여부를 확인할 수 있다
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+
+      - name: Build and test
+        run: ./gradlew build --no-daemon
