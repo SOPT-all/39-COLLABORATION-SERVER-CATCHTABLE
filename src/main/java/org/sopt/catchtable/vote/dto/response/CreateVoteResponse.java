@@ -1,5 +1,6 @@
 package org.sopt.catchtable.vote.dto.response;
 
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
@@ -25,9 +26,18 @@ public record CreateVoteResponse(
             vote.getStatus(),
             vote.getHostUser().getId(),
             candidates.stream().map(CandidateResponse::from).toList(),
-            // 명세 형식(2026-11-06T19:30:00+09:00)에 맞춰 초 단위로 자른다
-            vote.getCreatedAt().truncatedTo(ChronoUnit.SECONDS).atZone(SEOUL).toOffsetDateTime()
+            toSeoulOffsetDateTime(vote.getCreatedAt())
         );
+    }
+
+    // @CreationTimestamp의 LocalDateTime은 JVM 기본 시간대 기준이므로,
+    // 그 시간대로 해석한 뒤 서울 시각으로 바꾼다 (JVM이 UTC여도 응답은 +09:00 기준으로 맞음)
+    // 명세 형식(2026-11-06T19:30:00+09:00)에 맞춰 초 단위로 자른다
+    private static OffsetDateTime toSeoulOffsetDateTime(LocalDateTime dateTime) {
+        return dateTime.truncatedTo(ChronoUnit.SECONDS)
+            .atZone(ZoneId.systemDefault())
+            .withZoneSameInstant(SEOUL)
+            .toOffsetDateTime();
     }
 
     public record CandidateResponse(

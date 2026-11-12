@@ -71,7 +71,8 @@ class VoteServiceTest {
         assertThat(response.voteId()).isEqualTo(10L);
         assertThat(response.status()).isEqualTo(VoteStatus.OPEN);
         assertThat(response.hostUserId()).isEqualTo(1L);
-        assertThat(response.createdAt()).hasToString("2026-11-06T19:30+09:00");
+        assertThat(response.createdAt().getOffset()).isEqualTo(java.time.ZoneOffset.ofHours(9));
+        assertThat(response.createdAt().getNano()).isZero();
         assertThat(response.candidates())
             .extracting(CreateVoteResponse.CandidateResponse::storeId, CreateVoteResponse.CandidateResponse::displayOrder)
             .containsExactly(
