@@ -37,3 +37,24 @@ dependencies {
 tasks.named('test') {
 	useJUnitPlatform()
 }
+
+tasks.named('bootJar') {
+	archiveFileName = 'app.jar'
+}
+
+// 실행 불가능한 plain jar는 사용하지 않으므로 생성하지 않는다
+tasks.named('jar') {
+	enabled = false
+}
+
+// Docker 빌드 캐싱용: 소스 없이 빌드에 필요한 라이브러리 jar를 미리 내려받는다
+tasks.register('downloadDependencies') {
+	def classpaths = [
+		configurations.compileClasspath,
+		configurations.runtimeClasspath,
+		configurations.annotationProcessor
+	]
+	doLast {
+		classpaths.each { it.files }
+	}
+}
