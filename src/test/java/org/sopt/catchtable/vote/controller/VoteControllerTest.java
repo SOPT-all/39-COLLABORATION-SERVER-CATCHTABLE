@@ -74,13 +74,26 @@ class VoteControllerTest {
     }
 
     @Test
-    void X_User_Id가_숫자가_아니면_400_INVALID_REQUEST를_반환한다() throws Exception {
+    void X_User_Id가_숫자가_아니면_401_UNAUTHORIZED를_반환한다() throws Exception {
         mockMvc.perform(post("/api/v1/votes")
                 .header("X-User-Id", "abc")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"storeIds\":[3,5]}"))
-            .andExpect(status().isBadRequest())
-            .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+            .andExpect(status().isUnauthorized())
+            .andExpect(jsonPath("$.success").value(false))
+            .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
+
+        verify(voteService, never()).createVote(any(), any());
+    }
+
+    @Test
+    void X_User_Id가_비어_있으면_401_UNAUTHORIZED를_반환한다() throws Exception {
+        mockMvc.perform(post("/api/v1/votes")
+                .header("X-User-Id", "")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"storeIds\":[3,5]}"))
+            .andExpect(status().isUnauthorized())
+            .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
     }
 
     @Test

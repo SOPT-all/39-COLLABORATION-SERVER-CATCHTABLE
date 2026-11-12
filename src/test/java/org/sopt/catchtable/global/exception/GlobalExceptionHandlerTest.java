@@ -13,6 +13,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.web.bind.MissingRequestHeaderException;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 
 class GlobalExceptionHandlerTest {
@@ -80,6 +83,31 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    void nonNumericUserIdHeaderIsConvertedToUnauthorized() {
+        ResponseEntity<?> response = handler.handleTypeMismatch(
+            typeMismatch("X-User-Id", "userIdHeader"),
+            request()
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(response.getBody()).isEqualTo(BaseResponse.failure(ErrorCode.UNAUTHORIZED));
+    }
+
+    @Test
+    void otherTypeMismatchIsConvertedToBadRequest() {
+        ResponseEntity<?> response = handler.handleTypeMismatch(
+            typeMismatch("voteId", "voteIdPath"),
+            request()
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isEqualTo(BaseResponse.failure(
+            ErrorCode.INVALID_REQUEST,
+            java.util.List.of(new ValidationError("voteId", "요청 값의 형식이 올바르지 않습니다."))
+        ));
+    }
+
+    @Test
     void unexpectedExceptionDoesNotExposeItsMessage() {
         ResponseEntity<BaseResponse<Void>> response = handler.handleUnexpectedException(
             new RuntimeException("sensitive detail"),
@@ -99,9 +127,26 @@ class GlobalExceptionHandlerTest {
         }
     }
 
+    private MethodArgumentTypeMismatchException typeMismatch(String name, String fixtureMethod) {
+        try {
+            Method method = HeaderFixture.class.getDeclaredMethod(fixtureMethod, Long.class);
+            return new MethodArgumentTypeMismatchException(
+                "abc", Long.class, name, new MethodParameter(method, 0), new NumberFormatException()
+            );
+        } catch (NoSuchMethodException exception) {
+            throw new IllegalStateException(exception);
+        }
+    }
+
+    @SuppressWarnings("unused")
     private static class HeaderFixture {
-        @SuppressWarnings("unused")
         void handle(String header) {
+        }
+
+        void userIdHeader(@RequestHeader("X-User-Id") Long userId) {
+        }
+
+        void voteIdPath(@PathVariable Long voteId) {
         }
     }
 

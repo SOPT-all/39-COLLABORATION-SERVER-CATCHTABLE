@@ -15,6 +15,7 @@ import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
@@ -50,12 +51,26 @@ public class GlobalExceptionHandler {
         ));
     }
 
+    // X-User-Id가 숫자가 아니면 헤더가 없을 때와 같이 사용자를 식별할 수 없으므로 401
+    // 그 외 경로 변수·쿼리 파라미터 형식 오류는 400
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<?> handleTypeMismatch(
+        MethodArgumentTypeMismatchException exception,
+        HttpServletRequest request
+    ) {
+        if (isUserIdHeader(exception)) {
+            log.warn("Invalid user id header: {} {}", request.getMethod(), request.getRequestURI());
+            return failure(ErrorCode.UNAUTHORIZED);
+        }
+
+        return handleInvalidRequest(exception, request);
+    }
+
     @ExceptionHandler({
         MethodArgumentNotValidException.class,
         BindException.class,
         ConstraintViolationException.class,
         HttpMessageNotReadableException.class,
-        MethodArgumentTypeMismatchException.class,
         MissingServletRequestParameterException.class
     })
     public ResponseEntity<BaseResponse<List<ValidationError>>> handleInvalidRequest(
@@ -146,6 +161,12 @@ public class GlobalExceptionHandler {
         }
 
         return List.of();
+    }
+
+    // 같은 이름의 경로 변수·쿼리 파라미터와 구분하기 위해 @RequestHeader로 받은 값인지까지 확인
+    private boolean isUserIdHeader(MethodArgumentTypeMismatchException exception) {
+        return USER_ID_HEADER.equalsIgnoreCase(exception.getName())
+            && exception.getParameter().hasParameterAnnotation(RequestHeader.class);
     }
 
     private ValidationError toValidationError(FieldError fieldError) {
