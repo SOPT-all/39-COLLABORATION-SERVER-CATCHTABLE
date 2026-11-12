@@ -18,6 +18,8 @@ env:
 
 jobs:
   build-push:
+    # 수동 실행(workflow_dispatch) 시에도 main 브랜치만 배포
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
 
     steps:
@@ -47,6 +49,7 @@ jobs:
 
   deploy:
     needs: build-push
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
 
     steps:
