@@ -62,6 +62,8 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
+          # 접속 대상이 실제 EC2인지 호스트 키 지문으로 확인 (중간자 공격 방지)
+          fingerprint: ${{ secrets.EC2_SSH_FINGERPRINT }}
           envs: IMAGE
           script: |
             set -e
