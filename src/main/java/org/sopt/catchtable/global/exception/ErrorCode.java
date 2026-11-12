@@ -7,6 +7,7 @@ public enum ErrorCode {
     INVALID_NICKNAME(HttpStatus.BAD_REQUEST, "INVALID_NICKNAME", "닉네임은 공백만으로 구성할 수 없으며, 1~15자여야 합니다."),
     INVALID_VOTE_CANDIDATES(HttpStatus.BAD_REQUEST, "INVALID_VOTE_CANDIDATES", "서로 다른 매장 2개를 후보로 선택해야 합니다."),
     INVALID_VOTE_CANDIDATE(HttpStatus.BAD_REQUEST, "INVALID_VOTE_CANDIDATE", "해당 투표의 후보가 아닙니다."),
+    UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "사용자를 확인할 수 없습니다."),
     VOTE_CLOSE_FORBIDDEN(HttpStatus.FORBIDDEN, "VOTE_CLOSE_FORBIDDEN", "투표 생성자만 투표를 종료할 수 있습니다."),
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "사용자를 찾을 수 없습니다."),
     STORE_NOT_FOUND(HttpStatus.NOT_FOUND, "STORE_NOT_FOUND", "매장을 찾을 수 없습니다."),

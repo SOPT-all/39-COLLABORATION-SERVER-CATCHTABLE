@@ -43,4 +43,14 @@ public class VoteCandidate extends BaseEntity {
             updatable = false
     )
     private Integer displayOrder;
+
+    private VoteCandidate(Vote vote, Store store, Integer displayOrder) {
+        this.vote = vote;
+        this.store = store;
+        this.displayOrder = displayOrder;
+    }
+
+    public static VoteCandidate create(Vote vote, Store store, Integer displayOrder) {
+        return new VoteCandidate(vote, store, displayOrder);
+    }
 }

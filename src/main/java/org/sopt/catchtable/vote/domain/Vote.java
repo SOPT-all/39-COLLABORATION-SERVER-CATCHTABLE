@@ -44,4 +44,12 @@ public class Vote extends BaseEntity {
 
     @Column(name = "closed_at")
     private LocalDateTime closedAt;
+
+    private Vote(User hostUser) {
+        this.hostUser = hostUser;
+    }
+
+    public static Vote create(User hostUser) {
+        return new Vote(hostUser);
+    }
 }

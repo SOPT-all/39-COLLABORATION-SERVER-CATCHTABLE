@@ -16,6 +16,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
@@ -28,6 +29,17 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<BaseResponse<Void>> handleBusinessException(BusinessException exception) {
         return failure(exception.getErrorCode());
+    }
+
+    // X-User-Id 헤더가 없으면 사용자를 식별할 수 없으므로 401로 응답
+    @ExceptionHandler(MissingRequestHeaderException.class)
+    public ResponseEntity<BaseResponse<Void>> handleMissingRequestHeader(
+        MissingRequestHeaderException exception,
+        HttpServletRequest request
+    ) {
+        log.warn("Missing request header '{}': {} {}",
+            exception.getHeaderName(), request.getMethod(), request.getRequestURI());
+        return failure(ErrorCode.UNAUTHORIZED);
     }
 
     @ExceptionHandler({
