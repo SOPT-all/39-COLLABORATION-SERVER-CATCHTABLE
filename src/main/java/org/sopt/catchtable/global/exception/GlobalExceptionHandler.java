@@ -87,7 +87,7 @@ public class GlobalExceptionHandler {
         HttpServletRequest request
     ) {
         if (exception.isForReturnValue()) {
-            log.error("Unexpected server error: {} {}", request.getMethod(), request.getRequestURI());
+            log.error("Unexpected server error: {} {}", request.getMethod(), request.getRequestURI(), exception);
             return internalServerError();
         }
 
@@ -104,7 +104,8 @@ public class GlobalExceptionHandler {
         Exception exception,
         HttpServletRequest request
     ) {
-        log.error("Unexpected server error: {} {}", request.getMethod(), request.getRequestURI());
+        // 원인 추적을 위해 스택트레이스는 서버 로그에만 남기고, 응답에는 공통 메시지만 내린다
+        log.error("Unexpected server error: {} {}", request.getMethod(), request.getRequestURI(), exception);
         return internalServerError();
     }
 
