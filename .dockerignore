@@ -10,3 +10,12 @@ out
 compose.yaml
 .env
 .env.*
+
+# 인증서·키 파일
+**/*.pem
+**/*.key
+**/*.p12
+**/*.jks
+
+# 개인 로컬 실행 설정
+**/application-local.yml
