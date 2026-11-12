@@ -25,21 +25,29 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+    private static final String USER_ID_HEADER = "X-User-Id";
 
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<BaseResponse<Void>> handleBusinessException(BusinessException exception) {
         return failure(exception.getErrorCode());
     }
 
-    // X-User-Id 헤더가 없으면 사용자를 식별할 수 없으므로 401로 응답
+    // 사용자 식별 헤더(X-User-Id)가 없으면 401, 그 외 필수 헤더가 없으면 400
     @ExceptionHandler(MissingRequestHeaderException.class)
-    public ResponseEntity<BaseResponse<Void>> handleMissingRequestHeader(
+    public ResponseEntity<?> handleMissingRequestHeader(
         MissingRequestHeaderException exception,
         HttpServletRequest request
     ) {
         log.warn("Missing request header '{}': {} {}",
             exception.getHeaderName(), request.getMethod(), request.getRequestURI());
-        return failure(ErrorCode.UNAUTHORIZED);
+
+        if (USER_ID_HEADER.equalsIgnoreCase(exception.getHeaderName())) {
+            return failure(ErrorCode.UNAUTHORIZED);
+        }
+
+        return failure(ErrorCode.INVALID_REQUEST, List.of(
+            new ValidationError(exception.getHeaderName(), "필수 요청 헤더입니다.")
+        ));
     }
 
     @ExceptionHandler({
