@@ -7,6 +7,7 @@ import org.sopt.catchtable.store.domain.*;
 import org.sopt.catchtable.store.dto.StoreDetailResponse;
 import org.sopt.catchtable.store.repository.*;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Arrays;
 import java.util.List;
@@ -23,6 +24,7 @@ public class StoreService {
     private final StoreImageRepository storeImageRepository;
     private final StoreAmenityRepository storeAmenityRepository;
 
+    @Transactional(readOnly = true)
     public StoreDetailResponse getStoreDetail(Long storeId) {
         // 매장 조회 및 존재 여부 확인
         Optional<Store> storeOptional = storeRepository.findById(storeId);
