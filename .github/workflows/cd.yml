@@ -71,5 +71,18 @@ jobs:
               --env-file ~/catchtable.env \
               --restart unless-stopped \
               "$IMAGE"
-            # 실행 중인 컨테이너가 쓰지 않는 이미지 전부 삭제 (이전 배포 이미지 포함)
-            docker image prune -af
+
+            # 헬스체크: 최대 60초 동안 응답을 기다리고, 없으면 배포 실패 처리
+            for i in $(seq 1 30); do
+              if curl -sf http://localhost:8080/v3/api-docs > /dev/null; then
+                echo "Health check passed"
+                # 실행 중인 컨테이너가 쓰지 않는 이미지 전부 삭제 (이전 배포 이미지 포함)
+                docker image prune -af
+                exit 0
+              fi
+              sleep 2
+            done
+
+            echo "Health check failed"
+            docker logs --tail 100 catchtable
+            exit 1
