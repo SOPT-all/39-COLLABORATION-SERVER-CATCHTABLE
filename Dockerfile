@@ -20,8 +20,9 @@ RUN groupadd --system app && useradd --system --gid app app
 COPY --from=build --chown=app:app /workspace/build/libs/app.jar app.jar
 USER app
 
+# 힙 상한 고정: 1GB EC2 기준, 사양이 다르면 실행 시 -e JAVA_OPTS로 덮어쓴다
 ENV TZ=Asia/Seoul \
-    JAVA_OPTS="-XX:MaxRAMPercentage=75.0"
+    JAVA_OPTS="-Xmx512m"
 
 EXPOSE 8080
 ENTRYPOINT ["sh", "-c", "exec java $JAVA_OPTS -jar app.jar"]
