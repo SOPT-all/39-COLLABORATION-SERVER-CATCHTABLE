@@ -67,25 +67,56 @@ jobs:
           envs: IMAGE
           script: |
             set -e
+
+            run_container() {
+              docker rm -f catchtable > /dev/null 2>&1 || true
+              docker run -d --name catchtable \
+                -p 8080:8080 \
+                --env-file ~/catchtable.env \
+                --restart unless-stopped \
+                "$1"
+            }
+
+            # 최대 60초 동안 응답을 기다린다
+            wait_healthy() {
+              for i in $(seq 1 30); do
+                if curl -sf http://localhost:8080/v3/api-docs > /dev/null; then
+                  return 0
+                fi
+                sleep 2
+              done
+              return 1
+            }
+
             docker pull "$IMAGE"
-            docker rm -f catchtable || true
-            docker run -d --name catchtable \
-              -p 8080:8080 \
-              --env-file ~/catchtable.env \
-              --restart unless-stopped \
-              "$IMAGE"
 
-            # 헬스체크: 최대 60초 동안 응답을 기다리고, 없으면 배포 실패 처리
-            for i in $(seq 1 30); do
-              if curl -sf http://localhost:8080/v3/api-docs > /dev/null; then
-                echo "Health check passed"
-                # 실행 중인 컨테이너가 쓰지 않는 이미지 전부 삭제 (이전 배포 이미지 포함)
-                docker image prune -af
-                exit 0
-              fi
-              sleep 2
-            done
+            # 롤백 대상: 현재 실행 중인 컨테이너의 이미지 (첫 배포면 없음)
+            PREV_IMAGE=$(docker inspect --format '{{.Config.Image}}' catchtable 2>/dev/null || true)
 
-            echo "Health check failed"
+            run_container "$IMAGE"
+
+            if wait_healthy; then
+              echo "Health check passed: $IMAGE"
+              # 실행 중인 컨테이너가 쓰지 않는 이미지 전부 삭제 (이전 배포 이미지 포함)
+              docker image prune -af
+              exit 0
+            fi
+
+            echo "Health check failed: $IMAGE"
             docker logs --tail 100 catchtable
+
+            if [ -n "$PREV_IMAGE" ] && [ "$PREV_IMAGE" != "$IMAGE" ]; then
+              echo "Rolling back to $PREV_IMAGE"
+              run_container "$PREV_IMAGE"
+              if wait_healthy; then
+                echo "Rollback succeeded: $PREV_IMAGE"
+              else
+                echo "Rollback failed: $PREV_IMAGE"
+                docker logs --tail 100 catchtable
+              fi
+            else
+              echo "No previous image to roll back to"
+            fi
+
+            # 롤백에 성공해도 새 버전 배포는 실패했으므로 CD는 실패 처리
             exit 1
