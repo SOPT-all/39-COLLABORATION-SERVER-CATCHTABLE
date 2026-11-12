@@ -68,4 +68,5 @@ jobs:
               --env-file ~/catchtable.env \
               --restart unless-stopped \
               "$IMAGE"
-            docker image prune -f
+            # 실행 중인 컨테이너가 쓰지 않는 이미지 전부 삭제 (이전 배포 이미지 포함)
+            docker image prune -af
