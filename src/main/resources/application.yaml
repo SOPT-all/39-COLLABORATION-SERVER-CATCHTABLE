@@ -11,5 +11,7 @@ spring:
 
   jpa:
     hibernate:
+      # 로컬·CI는 update로 테이블 자동 생성
+      # 운영은 첫 배포로 테이블 생성 후 반드시 JPA_DDL_AUTO=validate 로 설정
       ddl-auto: ${JPA_DDL_AUTO:update}
     show-sql: ${JPA_SHOW_SQL:false}

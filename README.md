@@ -134,6 +134,25 @@ org.sopt.catchtable
 
 - Java 21을 사용합니다.
 - Gradle Wrapper를 사용하여 빌드합니다.
-- DB 연결 설정은 별도 작업으로 진행합니다. 연결 설정 전에는 애플리케이션 실행이 실패할 수 있습니다.
+- 로컬 실행 시 Docker가 켜져 있어야 합니다. `compose.yaml`의 MySQL이 자동으로 실행·연결됩니다.
 - 비밀번호 등 민감한 정보는 저장소에 커밋하지 않습니다.
 - 공통 응답·예외 처리는 서버 킥오프에서 합의한 명세를 기준으로 별도 구현합니다.
+
+
+
+## 🚀 배포
+
+`main`에 머지되면 GitHub Actions가 Docker 이미지를 빌드해 Docker Hub에 올리고, EC2에서 새 이미지로 교체 실행합니다.
+
+EC2의 `~/catchtable.env`에 아래 환경변수를 설정합니다.
+
+| 변수 | 설명 | 예시 |
+| --- | --- | --- |
+| `DB_URL` | RDS 접속 URL | `jdbc:mysql://<엔드포인트>:3306/catchtable` |
+| `DB_USERNAME` | DB 사용자 | — |
+| `DB_PASSWORD` | DB 비밀번호 | — |
+| `JPA_DDL_AUTO` | 테이블 자동 변경 방식 | `validate` |
+
+> ⚠️ `JPA_DDL_AUTO`를 설정하지 않으면 기본값 `update`가 적용되어 서버 시작 시 운영 DB 테이블 구조가 변경됩니다.
+> 첫 배포로 테이블이 생성된 뒤에는 반드시 `JPA_DDL_AUTO=validate`로 설정합니다.
+> 이후 엔티티를 변경할 때는 운영 DB에 직접 DDL을 적용한 뒤 배포합니다.
