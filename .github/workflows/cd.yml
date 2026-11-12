@@ -93,26 +93,25 @@ jobs:
             # 첫 배포면 빈 값
             PREV_IMAGE=$(docker inspect --format '{{.Config.Image}}' catchtable 2>/dev/null || true)
 
-            run_container "$IMAGE"
-
-            if wait_healthy; then
-              echo "Health check passed: $IMAGE"
+            # if 조건 안에서는 set -e가 적용되지 않아 docker run 실패도 롤백 흐름으로 넘어간다
+            if run_container "$IMAGE" && wait_healthy; then
+              echo "Deploy succeeded: $IMAGE"
               # 성공 시에만 정리해서 실패 시 롤백용 이전 이미지를 남긴다
               docker image prune -af
               exit 0
             fi
 
-            echo "Health check failed: $IMAGE"
-            docker logs --tail 100 catchtable
+            echo "Deploy failed: $IMAGE"
+            # 컨테이너 생성 자체가 실패하면 로그가 없으므로 실패해도 계속 진행
+            docker logs --tail 100 catchtable || true
 
             if [ -n "$PREV_IMAGE" ] && [ "$PREV_IMAGE" != "$IMAGE" ]; then
               echo "Rolling back to $PREV_IMAGE"
-              run_container "$PREV_IMAGE"
-              if wait_healthy; then
+              if run_container "$PREV_IMAGE" && wait_healthy; then
                 echo "Rollback succeeded: $PREV_IMAGE"
               else
                 echo "Rollback failed: $PREV_IMAGE"
-                docker logs --tail 100 catchtable
+                docker logs --tail 100 catchtable || true
               fi
             else
               echo "No previous image to roll back to"
