@@ -8,7 +8,7 @@ on:
 permissions:
   contents: read
 
-# 배포가 겹치지 않도록 하나씩 실행 (진행 중인 배포는 취소하지 않음)
+# 배포 도중 취소되지 않도록 순차 실행
 concurrency:
   group: cd
   cancel-in-progress: false
@@ -18,7 +18,7 @@ env:
 
 jobs:
   build-push:
-    # 수동 실행(workflow_dispatch) 시에도 main 브랜치만 배포
+    # workflow_dispatch로 다른 브랜치를 골라도 배포되지 않게 막는다
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
 
@@ -54,7 +54,7 @@ jobs:
 
     steps:
       - name: Deploy to EC2
-        # SSH 키를 받는 외부 액션이라 태그 대신 커밋 SHA로 고정
+        # SSH 키를 넘겨받는 서드파티 액션이라 커밋 SHA로 고정
         uses: appleboy/ssh-action@7eaf76671a0d7eec5d98ee897acda4f968735a17 # v1.2.0
         env:
           IMAGE: ${{ env.IMAGE_NAME }}:${{ github.sha }}
@@ -62,7 +62,7 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          # 접속 대상이 실제 EC2인지 호스트 키 지문으로 확인 (중간자 공격 방지)
+          # 중간자 공격 방지
           fingerprint: ${{ secrets.EC2_SSH_FINGERPRINT }}
           envs: IMAGE
           script: |
@@ -77,7 +77,7 @@ jobs:
                 "$1"
             }
 
-            # 최대 60초 동안 응답을 기다린다
+            # 최대 60초(2초 x 30회) 대기
             wait_healthy() {
               for i in $(seq 1 30); do
                 if curl -sf http://localhost:8080/v3/api-docs > /dev/null; then
@@ -90,14 +90,14 @@ jobs:
 
             docker pull "$IMAGE"
 
-            # 롤백 대상: 현재 실행 중인 컨테이너의 이미지 (첫 배포면 없음)
+            # 첫 배포면 빈 값
             PREV_IMAGE=$(docker inspect --format '{{.Config.Image}}' catchtable 2>/dev/null || true)
 
             run_container "$IMAGE"
 
             if wait_healthy; then
               echo "Health check passed: $IMAGE"
-              # 실행 중인 컨테이너가 쓰지 않는 이미지 전부 삭제 (이전 배포 이미지 포함)
+              # 성공 시에만 정리해서 실패 시 롤백용 이전 이미지를 남긴다
               docker image prune -af
               exit 0
             fi
@@ -118,5 +118,5 @@ jobs:
               echo "No previous image to roll back to"
             fi
 
-            # 롤백에 성공해도 새 버전 배포는 실패했으므로 CD는 실패 처리
+            # 롤백 성공 여부와 관계없이 새 버전 배포는 실패
             exit 1

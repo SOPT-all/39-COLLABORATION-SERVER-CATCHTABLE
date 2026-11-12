@@ -153,6 +153,4 @@ EC2의 `~/catchtable.env`에 아래 환경변수를 설정합니다.
 | `DB_PASSWORD` | DB 비밀번호 | — |
 | `JPA_DDL_AUTO` | 테이블 자동 변경 방식 | `validate` |
 
-> ⚠️ `JPA_DDL_AUTO`를 설정하지 않으면 기본값 `update`가 적용되어 서버 시작 시 운영 DB 테이블 구조가 변경됩니다.
-> 첫 배포로 테이블이 생성된 뒤에는 반드시 `JPA_DDL_AUTO=validate`로 설정합니다.
-> 이후 엔티티를 변경할 때는 운영 DB에 직접 DDL을 적용한 뒤 배포합니다.
+> `JPA_DDL_AUTO`를 설정하지 않으면 기본값 `update`가 적용되어 서버 시작 시 운영 DB 테이블 구조가 변경되므로, `JPA_DDL_AUTO=validate`로 설정하고 이후 엔티티를 변경할 때는 운영 DB에 직접 DDL을 적용한 뒤 배포합니다.
