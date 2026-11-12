@@ -1,5 +1,5 @@
 # ---------- Build stage ----------
-FROM eclipse-temurin:21-jdk AS build
+FROM eclipse-temurin:21.0.13_9-jdk-resolute AS build
 WORKDIR /workspace
 
 # 의존성 캐싱: 빌드 설정만 먼저 복사해 의존성을 받아둔다
@@ -12,7 +12,7 @@ COPY src src
 RUN ./gradlew bootJar --no-daemon
 
 # ---------- Runtime stage ----------
-FROM eclipse-temurin:21-jre
+FROM eclipse-temurin:21.0.13_9-jre-resolute
 WORKDIR /app
 
 # root가 아닌 전용 사용자로 실행
