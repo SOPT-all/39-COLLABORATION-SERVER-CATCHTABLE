@@ -1,3 +1,15 @@
 spring:
   application:
     name: catchtable
+
+  # 로컬: 비워두면 compose.yaml의 MySQL에 자동 연결 (Docker 필요)
+  # CI·배포: 환경변수로 DB 접속 정보 주입
+  datasource:
+    url: ${DB_URL:}
+    username: ${DB_USERNAME:}
+    password: ${DB_PASSWORD:}
+
+  jpa:
+    hibernate:
+      ddl-auto: ${JPA_DDL_AUTO:update}
+    show-sql: ${JPA_SHOW_SQL:false}
