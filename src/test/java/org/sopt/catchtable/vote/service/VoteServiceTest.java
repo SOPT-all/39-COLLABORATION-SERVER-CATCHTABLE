@@ -15,16 +15,11 @@ import static org.sopt.catchtable.fixture.EntityFixture.userWithId;
 
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.sopt.catchtable.global.exception.BusinessException;
 import org.sopt.catchtable.global.exception.ErrorCode;
@@ -110,12 +105,12 @@ class VoteServiceTest {
             .allSatisfy(candidate -> assertThat(candidate.getVote().getId()).isEqualTo(10L));
     }
 
-    @DisplayName("후보가 서로 다른 매장 2개가 아니면, 사용자나 매장을 조회하지 않고 투표 생성을 거절한다")
-    @ParameterizedTest(name = "{0}")
-    @MethodSource("candidateRuleViolations")
-    void createVoteWithInvalidCandidates(String situation, List<Long> storeIds) {
+    // 후보 규칙의 세부 경우는 VoteTest에서 검증하고, 여기서는 "조회 전에 거절한다"는 흐름만 확인한다
+    @DisplayName("후보 규칙을 어긴 요청은 사용자나 매장을 조회하지 않고 거절한다")
+    @Test
+    void createVoteWithInvalidCandidates() {
         // given
-        CreateVoteRequest request = new CreateVoteRequest(storeIds);
+        CreateVoteRequest request = new CreateVoteRequest(List.of(1L, 1L));
 
         // when & then
         assertThatThrownBy(() -> voteService.createVote(1L, request))
@@ -124,17 +119,6 @@ class VoteServiceTest {
             .isEqualTo(ErrorCode.INVALID_VOTE_CANDIDATES);
 
         verifyNoInteractions(userService, storeService, voteRepository, voteCandidateRepository);
-    }
-
-    static Stream<Arguments> candidateRuleViolations() {
-        return Stream.of(
-            Arguments.of("후보 목록을 보내지 않은 경우", null),
-            Arguments.of("후보를 하나도 고르지 않은 경우", List.of()),
-            Arguments.of("후보를 1개만 고른 경우", List.of(1L)),
-            Arguments.of("후보를 3개 고른 경우", List.of(1L, 2L, 3L)),
-            Arguments.of("후보에 빈 값이 섞인 경우", Arrays.asList(1L, null)),
-            Arguments.of("같은 매장을 두 번 고른 경우", List.of(1L, 1L))
-        );
     }
 
     @DisplayName("등록되지 않은 사용자는 투표를 만들 수 없다")
