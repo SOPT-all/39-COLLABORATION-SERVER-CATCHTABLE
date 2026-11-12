@@ -54,7 +54,8 @@ jobs:
 
     steps:
       - name: Deploy to EC2
-        uses: appleboy/ssh-action@v1.2.0
+        # SSH 키를 받는 외부 액션이라 태그 대신 커밋 SHA로 고정
+        uses: appleboy/ssh-action@7eaf76671a0d7eec5d98ee897acda4f968735a17 # v1.2.0
         env:
           IMAGE: ${{ env.IMAGE_NAME }}:${{ github.sha }}
         with:
