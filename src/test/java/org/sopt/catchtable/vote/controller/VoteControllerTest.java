@@ -3,9 +3,9 @@ package org.sopt.catchtable.vote.controller;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -14,6 +14,7 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.sopt.catchtable.global.exception.BusinessException;
 import org.sopt.catchtable.global.exception.ErrorCode;
@@ -25,8 +26,16 @@ import org.sopt.catchtable.vote.service.VoteService;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
+/**
+ * 투표 생성 API의 요청·응답 계약(상태 코드, 공통 응답 형식, 사용자 식별)을 검증한다.
+ * 서비스는 mock으로 대체하고, 실제 예외 변환은 GlobalExceptionHandler를 그대로 사용한다.
+ */
 class VoteControllerTest {
+
+    private static final String CREATE_VOTE_URL = "/api/v1/votes";
+    private static final String VALID_BODY = "{\"storeIds\":[3,5]}";
 
     private VoteService voteService;
     private MockMvc mockMvc;
@@ -39,14 +48,14 @@ class VoteControllerTest {
             .build();
     }
 
+    @DisplayName("투표를 만들면 201 Created와 함께, 생성된 투표와 순서가 정해진 후보 정보를 공통 응답 형식으로 돌려준다")
     @Test
-    void 투표_생성_성공시_201과_생성된_투표를_반환한다() throws Exception {
-        given(voteService.createVote(eq(1L), any())).willReturn(createVoteResponse());
+    void createVote() throws Exception {
+        // given
+        given(voteService.createVote(eq(1L), any())).willReturn(createdVote());
 
-        mockMvc.perform(post("/api/v1/votes")
-                .header("X-User-Id", "1")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"storeIds\":[3,5]}"))
+        // when & then
+        mockMvc.perform(createVoteRequest().header("X-User-Id", "1").content(VALID_BODY))
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.success").value(true))
             .andExpect(jsonPath("$.code").value("SUCCESS"))
@@ -61,64 +70,80 @@ class VoteControllerTest {
             .andExpect(jsonPath("$.data.createdAt").value("2026-11-06T19:30:00+09:00"));
     }
 
+    @DisplayName("사용자 식별 헤더 없이는 투표를 만들 수 없다")
     @Test
-    void X_User_Id_헤더가_없으면_401_UNAUTHORIZED를_반환한다() throws Exception {
-        mockMvc.perform(post("/api/v1/votes")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"storeIds\":[3,5]}"))
+    void createVoteWithoutUserId() throws Exception {
+        // given
+        MockHttpServletRequestBuilder request = createVoteRequest().content(VALID_BODY);
+
+        // when & then
+        mockMvc.perform(request)
             .andExpect(status().isUnauthorized())
             .andExpect(jsonPath("$.success").value(false))
             .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
 
-        verify(voteService, never()).createVote(any(), any());
+        then(voteService).should(never()).createVote(any(), any());
     }
 
+    @DisplayName("사용자 식별 헤더가 숫자가 아니면, 헤더가 없을 때와 같이 투표를 만들 수 없다")
     @Test
-    void X_User_Id가_숫자가_아니면_401_UNAUTHORIZED를_반환한다() throws Exception {
-        mockMvc.perform(post("/api/v1/votes")
-                .header("X-User-Id", "abc")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"storeIds\":[3,5]}"))
-            .andExpect(status().isUnauthorized())
-            .andExpect(jsonPath("$.success").value(false))
-            .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
+    void createVoteWithNonNumericUserId() throws Exception {
+        // given
+        MockHttpServletRequestBuilder request = createVoteRequest().header("X-User-Id", "abc").content(VALID_BODY);
 
-        verify(voteService, never()).createVote(any(), any());
-    }
-
-    @Test
-    void X_User_Id가_비어_있으면_401_UNAUTHORIZED를_반환한다() throws Exception {
-        mockMvc.perform(post("/api/v1/votes")
-                .header("X-User-Id", "")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"storeIds\":[3,5]}"))
+        // when & then
+        mockMvc.perform(request)
             .andExpect(status().isUnauthorized())
             .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
+
+        then(voteService).should(never()).createVote(any(), any());
     }
 
+    @DisplayName("사용자 식별 헤더가 비어 있으면, 헤더가 없을 때와 같이 투표를 만들 수 없다")
     @Test
-    void 요청_본문이_없으면_400_INVALID_REQUEST를_반환한다() throws Exception {
-        mockMvc.perform(post("/api/v1/votes")
-                .header("X-User-Id", "1")
-                .contentType(MediaType.APPLICATION_JSON))
+    void createVoteWithBlankUserId() throws Exception {
+        // given
+        MockHttpServletRequestBuilder request = createVoteRequest().header("X-User-Id", "").content(VALID_BODY);
+
+        // when & then
+        mockMvc.perform(request)
+            .andExpect(status().isUnauthorized())
+            .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
+
+        then(voteService).should(never()).createVote(any(), any());
+    }
+
+    @DisplayName("요청 본문 없이는 투표를 만들 수 없다")
+    @Test
+    void createVoteWithoutBody() throws Exception {
+        // given
+        MockHttpServletRequestBuilder request = createVoteRequest().header("X-User-Id", "1");
+
+        // when & then
+        mockMvc.perform(request)
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
     }
 
+    @DisplayName("후보 규칙을 어겨 투표 생성이 거절되면, 그 이유를 에러 코드로 알려준다")
     @Test
-    void 서비스의_비즈니스_예외는_해당_에러_코드로_응답한다() throws Exception {
+    void createVoteRejectedByCandidateRule() throws Exception {
+        // given
         given(voteService.createVote(eq(1L), any()))
             .willThrow(new BusinessException(ErrorCode.INVALID_VOTE_CANDIDATES));
 
-        mockMvc.perform(post("/api/v1/votes")
-                .header("X-User-Id", "1")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"storeIds\":[3,3]}"))
+        // when & then
+        mockMvc.perform(createVoteRequest().header("X-User-Id", "1").content("{\"storeIds\":[3,3]}"))
             .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.success").value(false))
             .andExpect(jsonPath("$.code").value("INVALID_VOTE_CANDIDATES"));
     }
 
-    private CreateVoteResponse createVoteResponse() {
+    private MockHttpServletRequestBuilder createVoteRequest() {
+        return post(CREATE_VOTE_URL).contentType(MediaType.APPLICATION_JSON);
+    }
+
+    private CreateVoteResponse createdVote() {
         return new CreateVoteResponse(
             10L,
             VoteStatus.OPEN,

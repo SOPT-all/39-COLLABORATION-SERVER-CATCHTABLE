@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import jakarta.validation.ConstraintViolationException;
 import java.lang.reflect.Method;
 import java.util.Set;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.sopt.catchtable.global.response.BaseResponse;
 import org.sopt.catchtable.global.response.ValidationError;
@@ -57,24 +58,30 @@ class GlobalExceptionHandlerTest {
         ));
     }
 
+    @DisplayName("사용자 식별 헤더가 없으면 사용자를 확인할 수 없다는 401 응답으로 바뀐다")
     @Test
     void missingUserIdHeaderIsConvertedToUnauthorized() {
-        ResponseEntity<?> response = handler.handleMissingRequestHeader(
-            new MissingRequestHeaderException("X-User-Id", headerParameter()),
-            request()
-        );
+        // given
+        MissingRequestHeaderException exception = new MissingRequestHeaderException("X-User-Id", headerParameter());
 
+        // when
+        ResponseEntity<?> response = handler.handleMissingRequestHeader(exception, request());
+
+        // then
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
         assertThat(response.getBody()).isEqualTo(BaseResponse.failure(ErrorCode.UNAUTHORIZED));
     }
 
+    @DisplayName("사용자 식별과 무관한 필수 헤더가 없으면, 빠진 헤더 이름을 담은 잘못된 요청(400)으로 바뀐다")
     @Test
     void missingOtherHeaderIsConvertedToBadRequestWithHeaderName() {
-        ResponseEntity<?> response = handler.handleMissingRequestHeader(
-            new MissingRequestHeaderException("Idempotency-Key", headerParameter()),
-            request()
-        );
+        // given
+        MissingRequestHeaderException exception = new MissingRequestHeaderException("Idempotency-Key", headerParameter());
 
+        // when
+        ResponseEntity<?> response = handler.handleMissingRequestHeader(exception, request());
+
+        // then
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody()).isEqualTo(BaseResponse.failure(
             ErrorCode.INVALID_REQUEST,
@@ -82,24 +89,30 @@ class GlobalExceptionHandlerTest {
         ));
     }
 
+    @DisplayName("사용자 식별 헤더의 형식이 틀리면, 헤더가 없을 때와 같이 401 응답으로 바뀐다")
     @Test
     void nonNumericUserIdHeaderIsConvertedToUnauthorized() {
-        ResponseEntity<?> response = handler.handleTypeMismatch(
-            typeMismatch("X-User-Id", "userIdHeader"),
-            request()
-        );
+        // given
+        MethodArgumentTypeMismatchException exception = typeMismatch("X-User-Id", "userIdHeader");
 
+        // when
+        ResponseEntity<?> response = handler.handleTypeMismatch(exception, request());
+
+        // then
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
         assertThat(response.getBody()).isEqualTo(BaseResponse.failure(ErrorCode.UNAUTHORIZED));
     }
 
+    @DisplayName("경로 변수처럼 헤더가 아닌 값의 형식이 틀리면, 잘못된 요청(400)으로 바뀐다")
     @Test
     void otherTypeMismatchIsConvertedToBadRequest() {
-        ResponseEntity<?> response = handler.handleTypeMismatch(
-            typeMismatch("voteId", "voteIdPath"),
-            request()
-        );
+        // given
+        MethodArgumentTypeMismatchException exception = typeMismatch("voteId", "voteIdPath");
 
+        // when
+        ResponseEntity<?> response = handler.handleTypeMismatch(exception, request());
+
+        // then
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody()).isEqualTo(BaseResponse.failure(
             ErrorCode.INVALID_REQUEST,

@@ -2,39 +2,49 @@ package org.sopt.catchtable.vote.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.sopt.catchtable.fixture.EntityFixture.storeWithId;
+import static org.sopt.catchtable.fixture.EntityFixture.userWithId;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
+import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.mockito.ArgumentCaptor;
 import org.sopt.catchtable.global.exception.BusinessException;
 import org.sopt.catchtable.global.exception.ErrorCode;
 import org.sopt.catchtable.store.domain.Store;
 import org.sopt.catchtable.store.service.StoreService;
-import org.sopt.catchtable.user.domain.User;
 import org.sopt.catchtable.user.service.UserService;
 import org.sopt.catchtable.vote.domain.Vote;
 import org.sopt.catchtable.vote.domain.VoteCandidate;
 import org.sopt.catchtable.vote.domain.VoteStatus;
 import org.sopt.catchtable.vote.dto.request.CreateVoteRequest;
 import org.sopt.catchtable.vote.dto.response.CreateVoteResponse;
+import org.sopt.catchtable.vote.dto.response.CreateVoteResponse.CandidateResponse;
 import org.sopt.catchtable.vote.repository.VoteCandidateRepository;
 import org.sopt.catchtable.vote.repository.VoteRepository;
-import org.springframework.beans.BeanUtils;
 import org.springframework.test.util.ReflectionTestUtils;
 
+/**
+ * 투표 생성 규칙을 DB 없이 검증하는 단위 테스트.
+ * 실제 저장·롤백은 VoteServiceIntegrationTest에서 확인한다.
+ */
 class VoteServiceTest {
 
     private VoteRepository voteRepository;
@@ -52,45 +62,63 @@ class VoteServiceTest {
         voteService = new VoteService(voteRepository, voteCandidateRepository, userService, storeService);
     }
 
+    @DisplayName("서로 다른 매장 2개로 투표를 만들면, 요청한 순서대로 후보 순서가 정해진 진행 중 투표가 만들어진다")
     @Test
-    void 투표와_후보_2개를_요청_순서대로_저장한다() {
-        User host = entity(User.class, 1L);
-        Store store5 = entity(Store.class, 5L);
-        Store store3 = entity(Store.class, 3L);
-        given(userService.getAuthorizedUser(1L)).willReturn(host);
-        given(storeService.getStoresByIds(List.of(5L, 3L))).willReturn(Map.of(3L, store3, 5L, store5));
-        given(voteRepository.save(any(Vote.class))).willAnswer(invocation -> {
-            Vote vote = invocation.getArgument(0);
-            ReflectionTestUtils.setField(vote, "id", 10L);
-            ReflectionTestUtils.setField(vote, "createdAt", LocalDateTime.of(2026, 11, 6, 19, 30, 0, 500_850_000));
-            return vote;
-        });
+    void createVote() {
+        // given
+        given(userService.getAuthorizedUser(1L)).willReturn(userWithId(1L));
+        given(storeService.getStoresByIds(List.of(5L, 3L)))
+            .willReturn(Map.of(3L, storeWithId(3L), 5L, storeWithId(5L)));
+        givenVoteIsSavedAs(10L, LocalDateTime.of(2026, 11, 6, 19, 30));
 
-        CreateVoteResponse response = voteService.createVote(1L, new CreateVoteRequest(List.of(5L, 3L)));
+        CreateVoteRequest request = new CreateVoteRequest(List.of(5L, 3L));
 
-        assertThat(response.voteId()).isEqualTo(10L);
-        assertThat(response.status()).isEqualTo(VoteStatus.OPEN);
-        assertThat(response.hostUserId()).isEqualTo(1L);
-        assertThat(response.createdAt().getOffset()).isEqualTo(java.time.ZoneOffset.ofHours(9));
-        assertThat(response.createdAt().getNano()).isZero();
+        // when
+        CreateVoteResponse response = voteService.createVote(1L, request);
+
+        // then
+        assertThat(response)
+            .extracting(CreateVoteResponse::voteId, CreateVoteResponse::status, CreateVoteResponse::hostUserId)
+            .containsExactly(10L, VoteStatus.OPEN, 1L);
         assertThat(response.candidates())
-            .extracting(CreateVoteResponse.CandidateResponse::storeId, CreateVoteResponse.CandidateResponse::displayOrder)
+            .extracting(CandidateResponse::storeId, CandidateResponse::displayOrder)
             .containsExactly(
-                org.assertj.core.groups.Tuple.tuple(5L, 1),
-                org.assertj.core.groups.Tuple.tuple(3L, 2)
+                tuple(5L, 1),
+                tuple(3L, 2)
             );
+        assertThat(response.createdAt().getOffset()).isEqualTo(ZoneOffset.ofHours(9));
+    }
 
+    @DisplayName("투표를 만들면 두 후보 모두 새로 만든 투표에 속한 채로 저장된다")
+    @Test
+    void createVoteSavesCandidatesOfTheVote() {
+        // given
+        given(userService.getAuthorizedUser(1L)).willReturn(userWithId(1L));
+        given(storeService.getStoresByIds(List.of(1L, 2L)))
+            .willReturn(Map.of(1L, storeWithId(1L), 2L, storeWithId(2L)));
+        givenVoteIsSavedAs(10L, LocalDateTime.of(2026, 11, 6, 19, 30));
+
+        // when
+        voteService.createVote(1L, new CreateVoteRequest(List.of(1L, 2L)));
+
+        // then
         @SuppressWarnings("unchecked")
-        org.mockito.ArgumentCaptor<List<VoteCandidate>> captor = org.mockito.ArgumentCaptor.forClass(List.class);
-        verify(voteCandidateRepository).saveAll(captor.capture());
-        assertThat(captor.getValue()).hasSize(2)
+        ArgumentCaptor<List<VoteCandidate>> savedCandidates = ArgumentCaptor.forClass(List.class);
+        then(voteCandidateRepository).should().saveAll(savedCandidates.capture());
+        assertThat(savedCandidates.getValue())
+            .hasSize(2)
             .allSatisfy(candidate -> assertThat(candidate.getVote().getId()).isEqualTo(10L));
     }
 
-    @ParameterizedTest
-    @MethodSource("invalidStoreIds")
-    void 후보가_서로_다른_매장_2개가_아니면_DB_조회_없이_INVALID_VOTE_CANDIDATES(List<Long> storeIds) {
-        assertThatThrownBy(() -> voteService.createVote(1L, new CreateVoteRequest(storeIds)))
+    @DisplayName("후보가 서로 다른 매장 2개가 아니면, 사용자나 매장을 조회하지 않고 투표 생성을 거절한다")
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("candidateRuleViolations")
+    void createVoteWithInvalidCandidates(String situation, List<Long> storeIds) {
+        // given
+        CreateVoteRequest request = new CreateVoteRequest(storeIds);
+
+        // when & then
+        assertThatThrownBy(() -> voteService.createVote(1L, request))
             .isInstanceOf(BusinessException.class)
             .extracting("errorCode")
             .isEqualTo(ErrorCode.INVALID_VOTE_CANDIDATES);
@@ -98,47 +126,59 @@ class VoteServiceTest {
         verifyNoInteractions(userService, storeService, voteRepository, voteCandidateRepository);
     }
 
-    static List<List<Long>> invalidStoreIds() {
-        List<List<Long>> cases = new ArrayList<>();
-        cases.add(null);                         // 누락
-        cases.add(List.of());                    // 0개
-        cases.add(List.of(1L));                  // 1개
-        cases.add(List.of(1L, 2L, 3L));          // 3개
-        cases.add(Arrays.asList(1L, null));      // null 포함
-        cases.add(List.of(1L, 1L));              // 중복
-        return cases;
+    static Stream<Arguments> candidateRuleViolations() {
+        return Stream.of(
+            Arguments.of("후보 목록을 보내지 않은 경우", null),
+            Arguments.of("후보를 하나도 고르지 않은 경우", List.of()),
+            Arguments.of("후보를 1개만 고른 경우", List.of(1L)),
+            Arguments.of("후보를 3개 고른 경우", List.of(1L, 2L, 3L)),
+            Arguments.of("후보에 빈 값이 섞인 경우", Arrays.asList(1L, null)),
+            Arguments.of("같은 매장을 두 번 고른 경우", List.of(1L, 1L))
+        );
     }
 
+    @DisplayName("등록되지 않은 사용자는 투표를 만들 수 없다")
     @Test
-    void 존재하지_않는_사용자면_UNAUTHORIZED이고_투표를_저장하지_않는다() {
+    void createVoteByUnknownUser() {
+        // given
         given(userService.getAuthorizedUser(99L)).willThrow(new BusinessException(ErrorCode.UNAUTHORIZED));
+        CreateVoteRequest request = new CreateVoteRequest(List.of(1L, 2L));
 
-        assertThatThrownBy(() -> voteService.createVote(99L, new CreateVoteRequest(List.of(1L, 2L))))
+        // when & then
+        assertThatThrownBy(() -> voteService.createVote(99L, request))
             .isInstanceOf(BusinessException.class)
             .extracting("errorCode")
             .isEqualTo(ErrorCode.UNAUTHORIZED);
 
-        verify(voteRepository, never()).save(any());
+        then(voteRepository).should(never()).save(any());
     }
 
+    @DisplayName("존재하지 않는 매장이 후보에 있으면 투표를 만들 수 없다")
     @Test
-    void 존재하지_않는_매장이_있으면_STORE_NOT_FOUND이고_투표를_저장하지_않는다() {
-        given(userService.getAuthorizedUser(1L)).willReturn(entity(User.class, 1L));
-        given(storeService.getStoresByIds(List.of(1L, 999L))).willThrow(new BusinessException(ErrorCode.STORE_NOT_FOUND));
+    void createVoteWithUnknownStore() {
+        // given
+        given(userService.getAuthorizedUser(1L)).willReturn(userWithId(1L));
+        given(storeService.getStoresByIds(List.of(1L, 999L)))
+            .willThrow(new BusinessException(ErrorCode.STORE_NOT_FOUND));
+        CreateVoteRequest request = new CreateVoteRequest(List.of(1L, 999L));
 
-        assertThatThrownBy(() -> voteService.createVote(1L, new CreateVoteRequest(List.of(1L, 999L))))
+        // when & then
+        assertThatThrownBy(() -> voteService.createVote(1L, request))
             .isInstanceOf(BusinessException.class)
             .extracting("errorCode")
             .isEqualTo(ErrorCode.STORE_NOT_FOUND);
 
-        verify(voteRepository, never()).save(any());
-        verify(voteCandidateRepository, never()).saveAll(anyList());
+        then(voteRepository).should(never()).save(any());
+        then(voteCandidateRepository).should(never()).saveAll(anyList());
     }
 
-    // protected 기본 생성자로 엔티티를 만들고 id만 채운다
-    private static <T> T entity(Class<T> type, Long id) {
-        T entity = BeanUtils.instantiateClass(type);
-        ReflectionTestUtils.setField(entity, "id", id);
-        return entity;
+    // 실제 저장처럼 id와 생성 시각을 채워서 돌려준다
+    private void givenVoteIsSavedAs(Long voteId, LocalDateTime createdAt) {
+        given(voteRepository.save(any(Vote.class))).willAnswer(invocation -> {
+            Vote vote = invocation.getArgument(0);
+            ReflectionTestUtils.setField(vote, "id", voteId);
+            ReflectionTestUtils.setField(vote, "createdAt", createdAt);
+            return vote;
+        });
     }
 }
