@@ -40,3 +40,15 @@ tasks.named('test') {
 tasks.named('bootJar') {
 	archiveFileName = 'app.jar'
 }
+
+// Docker 빌드 캐싱용: 소스 없이 빌드에 필요한 라이브러리 jar를 미리 내려받는다
+tasks.register('downloadDependencies') {
+	def classpaths = [
+		configurations.compileClasspath,
+		configurations.runtimeClasspath,
+		configurations.annotationProcessor
+	]
+	doLast {
+		classpaths.each { it.files }
+	}
+}
