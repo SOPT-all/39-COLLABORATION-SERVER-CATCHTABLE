@@ -9,8 +9,7 @@ RUN chmod +x gradlew && ./gradlew dependencies --no-daemon > /dev/null
 
 # 소스 복사 후 실행 가능한 jar 생성 (테스트는 CI에서 수행)
 COPY src src
-RUN ./gradlew bootJar --no-daemon \
-    && cp "$(ls build/libs/*.jar | grep -v plain)" app.jar
+RUN ./gradlew bootJar --no-daemon
 
 # ---------- Runtime stage ----------
 FROM eclipse-temurin:21-jre
@@ -18,7 +17,7 @@ WORKDIR /app
 
 # root가 아닌 전용 사용자로 실행
 RUN groupadd --system app && useradd --system --gid app app
-COPY --from=build --chown=app:app /workspace/app.jar app.jar
+COPY --from=build --chown=app:app /workspace/build/libs/app.jar app.jar
 USER app
 
 ENV TZ=Asia/Seoul \
