@@ -8,7 +8,7 @@ import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import org.sopt.catchtable.global.response.BaseResponse;
 import org.sopt.catchtable.global.response.SuccessCode;
-import org.sopt.catchtable.store.dto.StoreDetailResponse;
+import org.sopt.catchtable.store.dto.response.StoreDetailResponse;
 import org.sopt.catchtable.store.service.StoreService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
