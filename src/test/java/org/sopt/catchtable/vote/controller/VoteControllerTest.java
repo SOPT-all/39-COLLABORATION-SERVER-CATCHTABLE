@@ -139,6 +139,20 @@ class VoteControllerTest {
             .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
     }
 
+    @DisplayName("요청 본문이 JSON null이면 투표를 만들지 않고 잘못된 요청으로 거절된다")
+    @Test
+    void createVoteWithNullBody() throws Exception {
+        // given
+        MockHttpServletRequestBuilder request = createVoteRequest().header("X-User-Id", "1").content("null");
+
+        // when & then
+        mockMvc.perform(request)
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+
+        then(voteService).should(never()).createVote(any(), any());
+    }
+
     @DisplayName("후보 규칙을 어겨 투표 생성이 거절되면, 그 이유를 에러 코드로 알려준다")
     @Test
     void createVoteRejectedByCandidateRule() throws Exception {
