@@ -29,7 +29,7 @@ public record VoteDetailResponse(
     /**
      * @param candidates       displayOrder 오름차순으로 정렬된 후보
      * @param ballots          해당 투표의 모든 표. 이 순서가 후보별 투표자 순서가 된다
-     * @param storeDetailsById 후보 매장 ID별 매장 정보 (모든 후보의 매장이 있어야 한다)
+     * @param storeDetailsById 후보 매장 ID별 매장 정보. 후보 매장이 하나라도 없으면 IllegalStateException
      */
     public static VoteDetailResponse of(
         Vote vote,
@@ -54,7 +54,7 @@ public record VoteDetailResponse(
                 .map(candidate -> CandidateDetailResponse.of(
                     candidate,
                     ballotsByCandidateId.getOrDefault(candidate.getId(), List.of()),
-                    storeDetailsById.get(candidate.getStore().getId())
+                    storeDetailsById
                 ))
                 .toList(),
             ViewerResponse.of(vote, viewer, viewerBallot),
@@ -74,8 +74,9 @@ public record VoteDetailResponse(
         static CandidateDetailResponse of(
             VoteCandidate candidate,
             List<Ballot> ballots,
-            StoreDetailResponse store
+            Map<Long, StoreDetailResponse> storeDetailsById
         ) {
+            StoreDetailResponse store = getCandidateStore(candidate, storeDetailsById);
             return new CandidateDetailResponse(
                 candidate.getId(),
                 candidate.getDisplayOrder(),
@@ -83,6 +84,22 @@ public record VoteDetailResponse(
                 ballots.stream().map(VoterResponse::from).toList(),
                 CompareStoreResponse.from(store)
             );
+        }
+
+        // 후보 매장은 FK로 묶여 있어 정상이라면 항상 존재한다.
+        // 없다면 데이터 정합성 문제(또는 매장 조회 누락)이므로 NPE 대신 원인이 드러나는 예외로 실패한다 (500)
+        private static StoreDetailResponse getCandidateStore(
+            VoteCandidate candidate,
+            Map<Long, StoreDetailResponse> storeDetailsById
+        ) {
+            Long storeId = candidate.getStore().getId();
+            StoreDetailResponse store = storeDetailsById.get(storeId);
+            if (store == null) {
+                throw new IllegalStateException(
+                    "후보 매장 정보를 찾을 수 없습니다. candidateId=" + candidate.getId() + ", storeId=" + storeId
+                );
+            }
+            return store;
         }
     }
 

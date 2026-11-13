@@ -1,6 +1,7 @@
 package org.sopt.catchtable.vote.dto.response;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.sopt.catchtable.fixture.EntityFixture.ballotWithId;
 import static org.sopt.catchtable.fixture.EntityFixture.candidateWithId;
@@ -203,6 +204,19 @@ class VoteDetailResponseTest {
         // then
         assertThat(response.status()).isEqualTo(VoteStatus.CLOSED);
         assertThat(response.closedAt()).isEqualTo(OffsetDateTime.of(2026, 11, 6, 21, 0, 5, 0, ZoneOffset.ofHours(9)));
+    }
+
+    @DisplayName("후보 매장 정보가 빠져 있으면, 어느 후보의 어느 매장이 없는지 알려주며 응답을 만들지 않는다")
+    @Test
+    void candidateStoreMissing() {
+        // given
+        Map<Long, StoreDetailResponse> onlyFirstStore = Map.of(3L, storeDetail(3L));
+
+        // when & then
+        assertThatThrownBy(() -> VoteDetailResponse.of(vote, host, List.of(first, second), List.of(), onlyFirstStore))
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessageContaining("candidateId=22")
+            .hasMessageContaining("storeId=5");
     }
 
     private User user(Long id, String nickname) {

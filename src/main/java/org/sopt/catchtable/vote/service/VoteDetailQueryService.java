@@ -45,22 +45,10 @@ public class VoteDetailQueryService {
 
         List<VoteCandidate> candidates = voteCandidateRepository.findAllByVoteIdOrderByDisplayOrderAsc(voteId);
         List<Ballot> ballots = ballotRepository.findAllByVoteIdOrderByCreatedAtDescIdDesc(voteId);
-        Map<Long, StoreDetailResponse> storeDetailsById = getCandidateStores(voteId, candidates);
+        Map<Long, StoreDetailResponse> storeDetailsById = storeService.getStoreDetails(
+            candidates.stream().map(candidate -> candidate.getStore().getId()).toList()
+        );
 
         return VoteDetailResponse.of(vote, viewer, candidates, ballots, storeDetailsById);
-    }
-
-    // 후보 매장은 FK로 묶여 있어 정상이라면 항상 존재한다.
-    // 없다면 데이터 정합성 문제이므로 클라이언트 오류(4xx)가 아닌 서버 오류(500)로 남긴다
-    private Map<Long, StoreDetailResponse> getCandidateStores(Long voteId, List<VoteCandidate> candidates) {
-        List<Long> storeIds = candidates.stream()
-            .map(candidate -> candidate.getStore().getId())
-            .toList();
-        Map<Long, StoreDetailResponse> storeDetailsById = storeService.getStoreDetails(storeIds);
-
-        if (!storeDetailsById.keySet().containsAll(storeIds)) {
-            throw new IllegalStateException("후보 매장 정보를 찾을 수 없습니다. voteId=" + voteId);
-        }
-        return storeDetailsById;
     }
 }
