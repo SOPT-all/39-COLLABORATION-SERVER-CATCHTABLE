@@ -1,3 +1,20 @@
 spring:
   application:
     name: catchtable
+
+  # 로컬은 비워두면 compose.yaml의 MySQL에 자동 연결
+  datasource:
+    url: ${DB_URL:}
+    username: ${DB_USERNAME:}
+    password: ${DB_PASSWORD:}
+
+  jackson:
+    deserialization:
+      # 정수 필드(ID 등)에 1.5 같은 실수가 오면 1로 잘라 받지 않고 400으로 거절
+      accept-float-as-int: false
+
+  jpa:
+    hibernate:
+      # 운영은 테이블 생성 후 JPA_DDL_AUTO=validate 필수
+      ddl-auto: ${JPA_DDL_AUTO:update}
+    show-sql: ${JPA_SHOW_SQL:false}

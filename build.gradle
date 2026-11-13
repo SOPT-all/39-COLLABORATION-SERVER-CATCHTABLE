@@ -36,6 +36,8 @@ dependencies {
 
 tasks.named('test') {
 	useJUnitPlatform()
+	// 테스트는 main()을 거치지 않으므로, 실행 환경(CI는 UTC)과 관계없이 서버와 같은 KST로 맞춘다
+	systemProperty 'user.timezone', 'Asia/Seoul'
 }
 
 tasks.named('bootJar') {
