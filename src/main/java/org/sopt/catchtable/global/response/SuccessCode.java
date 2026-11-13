@@ -1,7 +1,8 @@
 package org.sopt.catchtable.global.response;
 
 public enum SuccessCode {
-    SUCCESS("SUCCESS", "요청에 성공했습니다.");
+    SUCCESS("SUCCESS", "요청에 성공했습니다."),
+    VOTE_CREATED("SUCCESS", "투표가 생성되었습니다.");
 
     private final String code;
     private final String message;

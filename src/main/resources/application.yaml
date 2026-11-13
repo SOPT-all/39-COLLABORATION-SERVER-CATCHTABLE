@@ -8,6 +8,11 @@ spring:
     username: ${DB_USERNAME:}
     password: ${DB_PASSWORD:}
 
+  jackson:
+    deserialization:
+      # 정수 필드(ID 등)에 1.5 같은 실수가 오면 1로 잘라 받지 않고 400으로 거절
+      accept-float-as-int: false
+
   jpa:
     hibernate:
       # 운영은 테이블 생성 후 JPA_DDL_AUTO=validate 필수

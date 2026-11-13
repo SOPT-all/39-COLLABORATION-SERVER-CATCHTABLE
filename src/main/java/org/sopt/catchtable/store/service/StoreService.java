@@ -2,8 +2,10 @@ package org.sopt.catchtable.store.service;
 
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +35,21 @@ public class StoreService {
     private final StoreMenuRepository storeMenuRepository;
     private final StoreAiSummaryRepository storeAiSummaryRepository;
     private final StoreAmenityRepository storeAmenityRepository;
+
+    // 일괄 조회: 중복 ID를 제거하고 조회, 하나라도 없으면 STORE_NOT_FOUND
+    // findAllByIdIn은 순서를 보장하지 않으므로 ID로 찾을 수 있게 Map으로 반환
+    public Map<Long, Store> getStoresByIds(Collection<Long> storeIds) {
+        Set<Long> uniqueStoreIds = new HashSet<>(storeIds);
+
+        Map<Long, Store> stores = storeRepository.findAllByIdIn(uniqueStoreIds).stream()
+            .collect(Collectors.toMap(Store::getId, Function.identity()));
+
+        if (stores.size() != uniqueStoreIds.size()) {
+            throw new BusinessException(ErrorCode.STORE_NOT_FOUND);
+        }
+
+        return stores;
+    }
 
     // 단건 조회: 공통 조회를 재사용하고 매장 존재 여부 확인
     public StoreDetailResponse getStoreDetail(Long storeId) {

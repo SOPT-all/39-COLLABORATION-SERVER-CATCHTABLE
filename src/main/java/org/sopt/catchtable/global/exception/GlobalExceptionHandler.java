@@ -10,12 +10,17 @@ import org.sopt.catchtable.global.response.ValidationError;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 import org.springframework.context.MessageSourceResolvable;
 import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
@@ -24,10 +29,43 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+    private static final String USER_ID_HEADER = "X-User-Id";
 
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<BaseResponse<Void>> handleBusinessException(BusinessException exception) {
         return failure(exception.getErrorCode());
+    }
+
+    // 사용자 식별 헤더(X-User-Id)가 없으면 401, 그 외 필수 헤더가 없으면 400
+    @ExceptionHandler(MissingRequestHeaderException.class)
+    public ResponseEntity<?> handleMissingRequestHeader(
+        MissingRequestHeaderException exception,
+        HttpServletRequest request
+    ) {
+        log.warn("Missing request header '{}': {} {}",
+            exception.getHeaderName(), request.getMethod(), request.getRequestURI());
+
+        if (USER_ID_HEADER.equalsIgnoreCase(exception.getHeaderName())) {
+            return failure(ErrorCode.UNAUTHORIZED);
+        }
+
+        return failure(ErrorCode.INVALID_REQUEST, List.of(
+            new ValidationError(exception.getHeaderName(), "필수 요청 헤더입니다.")
+        ));
+    }
+
+    // X-User-Id 형식 오류는 헤더가 없을 때처럼 사용자를 식별할 수 없으므로 401, 그 외 형식 오류는 400
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<?> handleTypeMismatch(
+        MethodArgumentTypeMismatchException exception,
+        HttpServletRequest request
+    ) {
+        if (isUserIdHeader(exception)) {
+            log.warn("Invalid user id header: {} {}", request.getMethod(), request.getRequestURI());
+            return failure(ErrorCode.UNAUTHORIZED);
+        }
+
+        return handleInvalidRequest(exception, request);
     }
 
     @ExceptionHandler({
@@ -35,7 +73,6 @@ public class GlobalExceptionHandler {
         BindException.class,
         ConstraintViolationException.class,
         HttpMessageNotReadableException.class,
-        MethodArgumentTypeMismatchException.class,
         MissingServletRequestParameterException.class
     })
     public ResponseEntity<BaseResponse<List<ValidationError>>> handleInvalidRequest(
@@ -46,13 +83,42 @@ public class GlobalExceptionHandler {
         return failure(ErrorCode.INVALID_REQUEST, extractValidationErrors(exception));
     }
 
+    // 잘못된 경로·메서드·Content-Type은 클라이언트 오류이므로 4xx로 응답하고 warn 로그만 남긴다 (스택트레이스 X)
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<BaseResponse<Void>> handleNoResourceFound(
+        NoResourceFoundException exception,
+        HttpServletRequest request
+    ) {
+        log.warn("Resource not found: {} {}", request.getMethod(), request.getRequestURI());
+        return failure(ErrorCode.RESOURCE_NOT_FOUND);
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<BaseResponse<Void>> handleMethodNotSupported(
+        HttpRequestMethodNotSupportedException exception,
+        HttpServletRequest request
+    ) {
+        log.warn("Method not allowed: {} {}", request.getMethod(), request.getRequestURI());
+        return failure(ErrorCode.METHOD_NOT_ALLOWED);
+    }
+
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<BaseResponse<Void>> handleMediaTypeNotSupported(
+        HttpMediaTypeNotSupportedException exception,
+        HttpServletRequest request
+    ) {
+        log.warn("Unsupported media type '{}': {} {}",
+            exception.getContentType(), request.getMethod(), request.getRequestURI());
+        return failure(ErrorCode.UNSUPPORTED_MEDIA_TYPE);
+    }
+
     @ExceptionHandler(HandlerMethodValidationException.class)
     public ResponseEntity<?> handleMethodValidationException(
         HandlerMethodValidationException exception,
         HttpServletRequest request
     ) {
         if (exception.isForReturnValue()) {
-            log.error("Unexpected server error: {} {}", request.getMethod(), request.getRequestURI());
+            log.error("Unexpected server error: {} {}", request.getMethod(), request.getRequestURI(), exception);
             return internalServerError();
         }
 
@@ -69,7 +135,8 @@ public class GlobalExceptionHandler {
         Exception exception,
         HttpServletRequest request
     ) {
-        log.error("Unexpected server error: {} {}", request.getMethod(), request.getRequestURI());
+        // 스택트레이스는 원인 추적용으로 로그에만 남기고, 응답에는 공통 메시지만 내린다
+        log.error("Unexpected server error: {} {}", request.getMethod(), request.getRequestURI(), exception);
         return internalServerError();
     }
 
@@ -126,6 +193,12 @@ public class GlobalExceptionHandler {
         }
 
         return List.of();
+    }
+
+    // 같은 이름의 경로 변수·쿼리 파라미터와 구분하려고 @RequestHeader 여부까지 확인
+    private boolean isUserIdHeader(MethodArgumentTypeMismatchException exception) {
+        return USER_ID_HEADER.equalsIgnoreCase(exception.getName())
+            && exception.getParameter().hasParameterAnnotation(RequestHeader.class);
     }
 
     private ValidationError toValidationError(FieldError fieldError) {
