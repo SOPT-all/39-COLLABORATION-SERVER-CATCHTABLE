@@ -2,9 +2,14 @@ package org.sopt.catchtable.fixture;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import org.sopt.catchtable.store.domain.Store;
+import org.sopt.catchtable.store.dto.response.StoreDetailResponse;
 import org.sopt.catchtable.user.domain.User;
+import org.sopt.catchtable.vote.domain.Ballot;
 import org.sopt.catchtable.vote.domain.Vote;
+import org.sopt.catchtable.vote.domain.VoteCandidate;
+import org.sopt.catchtable.vote.domain.VoteStatus;
 import org.springframework.beans.BeanUtils;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -58,5 +63,39 @@ public final class EntityFixture {
         ReflectionTestUtils.setField(vote, "id", id);
         ReflectionTestUtils.setField(vote, "createdAt", createdAt);
         return vote;
+    }
+
+    // 종료 상태와 종료 시각이 채워진 투표
+    public static Vote closedVote(Long id, User hostUser, LocalDateTime createdAt, LocalDateTime closedAt) {
+        Vote vote = savedVote(id, hostUser, createdAt);
+        ReflectionTestUtils.setField(vote, "status", VoteStatus.CLOSED);
+        ReflectionTestUtils.setField(vote, "closedAt", closedAt);
+        return vote;
+    }
+
+    public static VoteCandidate candidateWithId(Long id, Vote vote, Store store, int displayOrder) {
+        VoteCandidate candidate = VoteCandidate.create(vote, store, displayOrder);
+        ReflectionTestUtils.setField(candidate, "id", id);
+        return candidate;
+    }
+
+    public static Ballot ballotWithId(Long id, Vote vote, User user, VoteCandidate candidate, String displayName) {
+        Ballot ballot = Ballot.create(vote, user, candidate, displayName);
+        ReflectionTestUtils.setField(ballot, "id", id);
+        return ballot;
+    }
+
+    // StoreService 매장 상세 조회 결과
+    public static StoreDetailResponse storeDetail(Long storeId) {
+        return StoreDetailResponse.builder()
+            .storeId(storeId)
+            .name("매장" + storeId)
+            .rating(new BigDecimal("4.5"))
+            .reviewCount(100)
+            .priceRange("1~2만원")
+            .imageUrls(List.of())
+            .representativeMenus(List.of())
+            .amenities(List.of())
+            .build();
     }
 }

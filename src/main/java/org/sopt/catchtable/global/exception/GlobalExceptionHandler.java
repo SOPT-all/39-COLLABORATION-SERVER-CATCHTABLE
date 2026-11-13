@@ -20,6 +20,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.bind.MissingPathVariableException;
 import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
@@ -66,6 +67,24 @@ public class GlobalExceptionHandler {
         }
 
         return handleInvalidRequest(exception, request);
+    }
+
+    // 경로 변수가 공백(/votes/%20)이라 변환 후 null이 되면 400
+    // 변환 전부터 없으면 @PathVariable 이름이 URL과 어긋난 서버 코드 문제이므로 500
+    @ExceptionHandler(MissingPathVariableException.class)
+    public ResponseEntity<?> handleMissingPathVariable(
+        MissingPathVariableException exception,
+        HttpServletRequest request
+    ) {
+        if (!exception.isMissingAfterConversion()) {
+            log.error("Unexpected server error: {} {}", request.getMethod(), request.getRequestURI(), exception);
+            return internalServerError();
+        }
+
+        log.warn("Client request validation failed: {} {}", request.getMethod(), request.getRequestURI());
+        return failure(ErrorCode.INVALID_REQUEST, List.of(
+            new ValidationError(exception.getVariableName(), "요청 값의 형식이 올바르지 않습니다.")
+        ));
     }
 
     @ExceptionHandler({

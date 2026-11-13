@@ -62,6 +62,11 @@ public class Vote extends BaseEntity {
         return new Vote(hostUser);
     }
 
+    // hostUser의 ID만 읽으므로 지연 로딩 프록시여도 추가 쿼리 없음
+    public boolean isHostedBy(Long userId) {
+        return Objects.equals(hostUser.getId(), userId);
+    }
+
     // 후보 규칙: 서로 다른 매장 2개
     // 매장을 조회하기 전에 잘못된 요청을 걸러낼 수 있도록 ID만으로 검증한다
     public static void validateCandidateStoreIds(List<Long> storeIds) {

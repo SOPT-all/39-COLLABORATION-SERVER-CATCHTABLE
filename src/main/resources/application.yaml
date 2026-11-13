@@ -1,3 +1,7 @@
+server:
+  # nginx(HTTPS) 뒤에서 X-Forwarded-Proto를 반영해 Swagger 서버 주소 등을 https로 생성
+  forward-headers-strategy: framework
+
 spring:
   application:
     name: catchtable
