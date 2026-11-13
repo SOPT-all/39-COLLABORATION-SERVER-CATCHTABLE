@@ -13,8 +13,8 @@ import org.sopt.catchtable.vote.domain.VoteCandidate;
 import org.sopt.catchtable.vote.domain.VoteStatus;
 
 /**
- * 투표 현황 응답. API 4(투표 현황 조회), 5(표 제출), 6(투표 종료)이 같은 구조를 쓴다.
- * 연관 엔티티는 getId()만 사용하므로 지연 로딩 프록시여도 추가 쿼리가 없다.
+ * 투표 상세 응답. API 4(투표 상세 조회)·5(표 제출)·6(투표 종료)이 같은 구조를 쓴다.
+ * 연관 엔티티는 getId()만 읽으므로 지연 로딩 프록시여도 추가 쿼리가 없다.
  */
 public record VoteDetailResponse(
     Long voteId,
@@ -27,9 +27,9 @@ public record VoteDetailResponse(
 ) {
 
     /**
-     * @param candidates       displayOrder 오름차순으로 정렬된 후보. 개수가 Vote.CANDIDATE_COUNT가 아니면 IllegalStateException
-     * @param ballots          해당 투표의 모든 표. 이 순서가 후보별 투표자 순서가 된다
-     * @param storeDetailsById 후보 매장 ID별 매장 정보. 후보 매장이 하나라도 없으면 IllegalStateException
+     * @param candidates       displayOrder 오름차순 후보 (2개가 아니면 IllegalStateException)
+     * @param ballots          투표의 모든 표. 이 순서가 투표자 목록 순서가 된다
+     * @param storeDetailsById 후보 매장 정보 (하나라도 없으면 IllegalStateException)
      */
     public static VoteDetailResponse of(
         Vote vote,
@@ -65,8 +65,7 @@ public record VoteDetailResponse(
         );
     }
 
-    // 투표 후보는 생성 시 항상 2개로 저장된다 (Vote.CANDIDATE_COUNT).
-    // 다르다면 데이터 정합성 문제이므로 명세("항상 2개")와 다른 응답을 200으로 내보내지 않고 실패한다 (500)
+    // 후보는 항상 2개로 저장되므로, 다르면 데이터 정합성 문제로 보고 500
     private static void validateCandidateCount(Vote vote, List<VoteCandidate> candidates) {
         if (candidates.size() != Vote.CANDIDATE_COUNT) {
             throw new IllegalStateException(
@@ -98,8 +97,7 @@ public record VoteDetailResponse(
             );
         }
 
-        // 후보 매장은 FK로 묶여 있어 정상이라면 항상 존재한다.
-        // 없다면 데이터 정합성 문제(또는 매장 조회 누락)이므로 NPE 대신 원인이 드러나는 예외로 실패한다 (500)
+        // 후보 매장은 FK로 묶여 있어 항상 있어야 하므로, 없으면 NPE 대신 원인이 드러나는 예외로 500
         private static StoreDetailResponse getCandidateStore(
             VoteCandidate candidate,
             Map<Long, StoreDetailResponse> storeDetailsById

@@ -65,7 +65,7 @@ public final class EntityFixture {
         return vote;
     }
 
-    // 종료된 것처럼 상태와 종료 시각이 채워진 투표
+    // 종료 상태와 종료 시각이 채워진 투표
     public static Vote closedVote(Long id, User hostUser, LocalDateTime createdAt, LocalDateTime closedAt) {
         Vote vote = savedVote(id, hostUser, createdAt);
         ReflectionTestUtils.setField(vote, "status", VoteStatus.CLOSED);
@@ -85,7 +85,7 @@ public final class EntityFixture {
         return ballot;
     }
 
-    // 매장 상세 조회(StoreService) 결과
+    // StoreService 매장 상세 조회 결과
     public static StoreDetailResponse storeDetail(Long storeId) {
         return StoreDetailResponse.builder()
             .storeId(storeId)

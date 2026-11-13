@@ -70,8 +70,8 @@ public class GlobalExceptionHandler {
         return handleInvalidRequest(exception, request);
     }
 
-    // 경로 변수가 공백(/votes/%20)이면 숫자로 바꾸는 과정에서 null이 되어 이 예외가 난다 → 클라이언트 잘못이므로 400
-    // 변환 전부터 경로 변수가 없는 경우는 @PathVariable 이름과 URL 템플릿이 어긋난 서버 코드 문제이므로 500
+    // 경로 변수가 공백(/votes/%20)이라 변환 후 null이 되면 400
+    // 변환 전부터 없으면 @PathVariable 이름이 URL과 어긋난 서버 코드 문제이므로 500
     @ExceptionHandler(MissingPathVariableException.class)
     public ResponseEntity<?> handleMissingPathVariable(
         MissingPathVariableException exception,

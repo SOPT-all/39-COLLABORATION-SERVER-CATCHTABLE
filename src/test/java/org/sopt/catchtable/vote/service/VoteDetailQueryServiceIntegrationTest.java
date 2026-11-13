@@ -27,10 +27,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
 /**
- * 실제 DB에 저장된 투표·후보·표로 투표 현황이 올바르게 조립되는지 검증하는 통합 테스트.
+ * 실제 DB의 투표·후보·표로 투표 상세 응답이 올바르게 조립되는지 검증하는 통합 테스트.
  *
- * 조회 서비스가 트랜잭션 밖(테스트 메서드)에서 호출될 때도 지연 로딩 오류 없이 응답이 만들어지는지 함께 확인한다.
- * 그래서 테스트에 @Transactional을 붙이지 않고, 테스트가 만든 데이터만 골라서 지운다 (외래키 때문에 자식 테이블부터).
+ * 트랜잭션 밖에서 호출해도 지연 로딩 오류가 없는지 확인하려고 @Transactional을 붙이지 않는다.
+ * 대신 테스트가 만든 데이터만 골라서 지운다 (외래키 때문에 자식 테이블부터).
  */
 @SpringBootTest
 class VoteDetailQueryServiceIntegrationTest {

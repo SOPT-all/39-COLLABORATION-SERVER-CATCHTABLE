@@ -62,7 +62,7 @@ public class Vote extends BaseEntity {
         return new Vote(hostUser);
     }
 
-    // 연관 엔티티의 ID만 비교하므로 hostUser가 지연 로딩 프록시여도 추가 쿼리가 없다
+    // hostUser의 ID만 읽으므로 지연 로딩 프록시여도 추가 쿼리 없음
     public boolean isHostedBy(Long userId) {
         return Objects.equals(hostUser.getId(), userId);
     }

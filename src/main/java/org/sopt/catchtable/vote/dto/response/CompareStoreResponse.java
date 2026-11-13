@@ -8,7 +8,7 @@ import org.sopt.catchtable.store.dto.response.StoreDetailResponse.AmenityRespons
 import org.sopt.catchtable.store.dto.response.StoreDetailResponse.RepresentativeMenuResponse;
 import org.sopt.catchtable.store.dto.response.StoreDetailResponse.StationResponse;
 
-// 투표 화면에서 두 후보 매장을 비교할 때 쓰는 매장 정보 (명세의 CompareStore)
+// 후보 매장 비교 정보 (명세의 CompareStore)
 public record CompareStoreResponse(
     Long storeId,
     String name,

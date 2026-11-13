@@ -35,7 +35,7 @@ import org.sopt.catchtable.vote.repository.VoteCandidateRepository;
 import org.sopt.catchtable.vote.repository.VoteRepository;
 
 /**
- * 투표 현황 조회의 흐름(요청자 확인 → 투표 조회 → 후보·표·매장 조회)을 DB 없이 검증한다.
+ * 투표 상세 조회 흐름(요청자 확인 → 투표 조회 → 후보·표·매장 조회)을 DB 없이 검증한다.
  */
 class VoteDetailQueryServiceTest {
 
@@ -70,7 +70,7 @@ class VoteDetailQueryServiceTest {
         second = candidateWithId(22L, vote, storeWithId(5L), 2);
     }
 
-    @DisplayName("투표 현황을 조회하면 후보 매장 정보를 한 번에 가져와 후보·득표·요청자 정보를 함께 돌려준다")
+    @DisplayName("투표 상세를 조회하면 후보 매장 정보를 한 번에 가져와 후보·득표·요청자 정보를 함께 돌려준다")
     @Test
     void getVoteDetail() {
         // given

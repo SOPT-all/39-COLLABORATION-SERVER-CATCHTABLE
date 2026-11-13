@@ -53,7 +53,7 @@ public class VoteController {
 
     @GetMapping("/{voteId}")
     @Operation(
-        summary = "투표 현황 조회",
+        summary = "투표 상세 조회",
         description = "후보 2개의 매장 비교 정보, 후보별 득표 수와 투표자 닉네임, 요청자의 생성자·투표 여부를 조회합니다."
     )
     @ApiResponses({

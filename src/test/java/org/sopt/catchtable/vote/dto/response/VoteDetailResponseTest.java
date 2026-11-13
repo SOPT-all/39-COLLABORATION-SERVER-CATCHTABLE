@@ -35,7 +35,7 @@ import org.sopt.catchtable.vote.dto.response.VoteDetailResponse.VoterResponse;
 import org.springframework.test.util.ReflectionTestUtils;
 
 /**
- * 투표 현황 응답을 만드는 규칙(득표 집계, 투표자 목록, 요청자 정보, 시각 형식)을 검증한다.
+ * 투표 상세 응답 조립 규칙(득표 집계, 투표자 목록, 요청자 정보, 시각 형식)을 검증한다.
  */
 class VoteDetailResponseTest {
 
@@ -51,7 +51,7 @@ class VoteDetailResponseTest {
 
     @BeforeEach
     void setUp() {
-        // 시각 변환 결과를 고정하기 위해 서버 시간대를 서울로 맞춘다
+        // 시각 변환 결과를 고정하려고 서버 시간대를 서울로 맞춘다
         originalTimeZone = TimeZone.getDefault();
         TimeZone.setDefault(TimeZone.getTimeZone("Asia/Seoul"));
 

@@ -180,7 +180,7 @@ class VoteControllerTest {
             .andExpect(jsonPath("$.code").value("METHOD_NOT_ALLOWED"));
     }
 
-    @DisplayName("투표 현황을 조회하면 200 OK와 함께 후보·득표·요청자 정보를 공통 응답 형식으로 돌려준다")
+    @DisplayName("투표 상세를 조회하면 200 OK와 함께 후보·득표·요청자 정보를 공통 응답 형식으로 돌려준다")
     @Test
     void getVoteDetail() throws Exception {
         // given
@@ -223,7 +223,7 @@ class VoteControllerTest {
             .andExpect(jsonPath("$.data.viewer.displayName").value(nullValue()));
     }
 
-    @DisplayName("사용자 식별 헤더 없이는 투표 현황을 조회할 수 없다")
+    @DisplayName("사용자 식별 헤더 없이는 투표 상세를 조회할 수 없다")
     @Test
     void getVoteDetailWithoutUserId() throws Exception {
         // given
