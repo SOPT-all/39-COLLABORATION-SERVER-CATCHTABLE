@@ -171,8 +171,11 @@ class VoteControllerTest {
     @DisplayName("투표 생성 주소에 GET으로 요청하면, 지원하지 않는 메서드라고 알려준다")
     @Test
     void getOnCreateVoteUrl() throws Exception {
+        // given
+        MockHttpServletRequestBuilder request = get(CREATE_VOTE_URL).header("X-User-Id", "1");
+
         // when & then
-        mockMvc.perform(get(CREATE_VOTE_URL).header("X-User-Id", "1"))
+        mockMvc.perform(request)
             .andExpect(status().isMethodNotAllowed())
             .andExpect(jsonPath("$.code").value("METHOD_NOT_ALLOWED"));
     }
@@ -223,8 +226,11 @@ class VoteControllerTest {
     @DisplayName("사용자 식별 헤더 없이는 투표 현황을 조회할 수 없다")
     @Test
     void getVoteDetailWithoutUserId() throws Exception {
+        // given
+        MockHttpServletRequestBuilder request = get(VOTE_DETAIL_URL, 10);
+
         // when & then
-        mockMvc.perform(get(VOTE_DETAIL_URL, 10))
+        mockMvc.perform(request)
             .andExpect(status().isUnauthorized())
             .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
 
@@ -234,8 +240,11 @@ class VoteControllerTest {
     @DisplayName("투표 ID가 숫자가 아니면 잘못된 요청으로 거절된다")
     @Test
     void getVoteDetailWithNonNumericVoteId() throws Exception {
+        // given
+        MockHttpServletRequestBuilder request = get(VOTE_DETAIL_URL, "abc").header("X-User-Id", "2");
+
         // when & then
-        mockMvc.perform(get(VOTE_DETAIL_URL, "abc").header("X-User-Id", "2"))
+        mockMvc.perform(request)
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
 

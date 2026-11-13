@@ -66,8 +66,11 @@ class VoteDetailResponseTest {
     @DisplayName("아무도 투표하지 않았으면 참여자 수와 후보별 득표 수는 0이고, 투표자 목록은 빈 배열이다")
     @Test
     void noBallots() {
+        // given
+        List<Ballot> noBallots = List.of();
+
         // when
-        VoteDetailResponse response = VoteDetailResponse.of(vote, host, List.of(first, second), List.of(), storeDetails);
+        VoteDetailResponse response = VoteDetailResponse.of(vote, host, List.of(first, second), noBallots, storeDetails);
 
         // then
         assertThat(response.participantCount()).isZero();
@@ -105,8 +108,11 @@ class VoteDetailResponseTest {
     @DisplayName("후보는 넘겨받은 노출 순서대로, 각 후보의 매장 비교 정보와 함께 돌려준다")
     @Test
     void candidatesWithStore() {
+        // given
+        List<VoteCandidate> candidatesInDisplayOrder = List.of(first, second);
+
         // when
-        VoteDetailResponse response = VoteDetailResponse.of(vote, host, List.of(first, second), List.of(), storeDetails);
+        VoteDetailResponse response = VoteDetailResponse.of(vote, host, candidatesInDisplayOrder, List.of(), storeDetails);
 
         // then
         assertThat(response.candidates())
@@ -160,8 +166,11 @@ class VoteDetailResponseTest {
     @DisplayName("투표를 만든 사람이 조회하면 생성자로 표시된다")
     @Test
     void viewerIsHost() {
+        // given
+        User viewer = host;
+
         // when
-        VoteDetailResponse response = VoteDetailResponse.of(vote, host, List.of(first, second), List.of(), storeDetails);
+        VoteDetailResponse response = VoteDetailResponse.of(vote, viewer, List.of(first, second), List.of(), storeDetails);
 
         // then
         assertThat(response.viewer().isHost()).isTrue();
@@ -170,8 +179,11 @@ class VoteDetailResponseTest {
     @DisplayName("진행 중인 투표는 종료 시각이 null이고, 생성 시각은 서울 기준 초 단위로 나간다")
     @Test
     void openVoteTimes() {
+        // given
+        Vote openVote = savedVote(10L, host, CREATED_AT);
+
         // when
-        VoteDetailResponse response = VoteDetailResponse.of(vote, host, List.of(first, second), List.of(), storeDetails);
+        VoteDetailResponse response = VoteDetailResponse.of(openVote, host, List.of(first, second), List.of(), storeDetails);
 
         // then
         assertThat(response.status()).isEqualTo(VoteStatus.OPEN);
