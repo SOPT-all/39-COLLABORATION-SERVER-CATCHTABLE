@@ -38,6 +38,3 @@ out/
 
 ### Environment ###
 .env
-
-# 개인 로컬 실행 설정
-/src/main/resources/application-local.yml
