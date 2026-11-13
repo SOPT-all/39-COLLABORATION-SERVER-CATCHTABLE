@@ -9,6 +9,7 @@ import static org.mockito.Mockito.never;
 import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -312,6 +313,115 @@ class VoteControllerTest {
             .andExpect(jsonPath("$.code").value("VOTE_NOT_FOUND"));
     }
 
+    @DisplayName("표를 제출하면 최신 투표 현황을 공통 성공 응답으로 반환한다")
+    @Test
+    void submitBallot() throws Exception {
+        // given
+        given(voteService.submitBallot(eq(2L), eq(10L), any())).willReturn(voteDetail());
+
+        // when & then
+        mockMvc.perform(post("/api/v1/votes/10/ballots/me")
+                .header("X-User-Id", "2")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"candidateId\":21,\"nickname\":\"테스트1\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.success").value(true))
+            .andExpect(jsonPath("$.code").value("SUCCESS"))
+            .andExpect(jsonPath("$.data.voteId").value(10))
+            .andExpect(jsonPath("$.data.viewer.selectedCandidateId").value(21));
+    }
+
+    @DisplayName("후보 ID가 없으면 표를 제출하지 않고 잘못된 요청으로 거절한다")
+    @Test
+    void submitBallotWithoutCandidateId() throws Exception {
+        // when & then
+        mockMvc.perform(post("/api/v1/votes/10/ballots/me")
+                .header("X-User-Id", "2")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"nickname\":\"테스트1\"}"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+
+        then(voteService).should(never()).submitBallot(any(), any(), any());
+    }
+
+    @DisplayName("이미 투표한 사용자가 다시 표를 제출하면 재투표가 아니라 충돌로 거절된다")
+    @Test
+    void submitBallotAfterAlreadyVoted() throws Exception {
+        // given
+        given(voteService.submitBallot(eq(2L), eq(10L), any()))
+            .willThrow(new BusinessException(ErrorCode.ALREADY_VOTED));
+
+        // when & then
+        mockMvc.perform(post("/api/v1/votes/10/ballots/me")
+                .header("X-User-Id", "2")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"candidateId\":21,\"nickname\":\"테스트1\"}"))
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.success").value(false))
+            .andExpect(jsonPath("$.code").value("ALREADY_VOTED"));
+    }
+
+    @DisplayName("같은 투표의 다른 요청을 처리 중이면 표 제출을 충돌로 안내한다")
+    @Test
+    void submitBallotWhileVoteIsProcessing() throws Exception {
+        // given
+        given(voteService.submitBallot(eq(2L), eq(10L), any()))
+            .willThrow(new BusinessException(ErrorCode.VOTE_PROCESSING));
+
+        // when & then
+        mockMvc.perform(post("/api/v1/votes/10/ballots/me")
+                .header("X-User-Id", "2")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"candidateId\":21,\"nickname\":\"테스트1\"}"))
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.success").value(false))
+            .andExpect(jsonPath("$.code").value("VOTE_PROCESSING"));
+    }
+
+    @DisplayName("생성자가 투표를 종료하면 종료 메시지와 최신 투표 현황을 반환한다")
+    @Test
+    void closeVote() throws Exception {
+        // given
+        given(voteService.closeVote(1L, 10L)).willReturn(closedVoteDetail());
+
+        // when & then
+        mockMvc.perform(patch("/api/v1/votes/10/close").header("X-User-Id", "1"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.success").value(true))
+            .andExpect(jsonPath("$.code").value("SUCCESS"))
+            .andExpect(jsonPath("$.message").value("투표가 종료되었습니다."))
+            .andExpect(jsonPath("$.data.status").value("CLOSED"));
+    }
+
+    @DisplayName("이미 종료된 투표를 다시 종료하면 충돌로 거절된다")
+    @Test
+    void closeVoteAfterAlreadyClosed() throws Exception {
+        // given
+        given(voteService.closeVote(1L, 10L))
+            .willThrow(new BusinessException(ErrorCode.VOTE_ALREADY_CLOSED));
+
+        // when & then
+        mockMvc.perform(patch("/api/v1/votes/10/close").header("X-User-Id", "1"))
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.success").value(false))
+            .andExpect(jsonPath("$.code").value("VOTE_ALREADY_CLOSED"));
+    }
+
+    @DisplayName("같은 투표의 다른 요청을 처리 중이면 투표 종료를 충돌로 안내한다")
+    @Test
+    void closeVoteWhileVoteIsProcessing() throws Exception {
+        // given
+        given(voteService.closeVote(1L, 10L))
+            .willThrow(new BusinessException(ErrorCode.VOTE_PROCESSING));
+
+        // when & then
+        mockMvc.perform(patch("/api/v1/votes/10/close").header("X-User-Id", "1"))
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.success").value(false))
+            .andExpect(jsonPath("$.code").value("VOTE_PROCESSING"));
+    }
+
     private MockHttpServletRequestBuilder createVoteRequest() {
         return post(CREATE_VOTE_URL).contentType(MediaType.APPLICATION_JSON);
     }
@@ -356,6 +466,21 @@ class VoteControllerTest {
             new ViewerResponse(2L, false, false, null, null, "테스트2"),
             OffsetDateTime.of(2026, 11, 6, 19, 30, 0, 0, ZoneOffset.ofHours(9)),
             null
+        );
+    }
+
+    private VoteDetailResponse closedVoteDetail() {
+        return new VoteDetailResponse(
+            10L,
+            VoteStatus.CLOSED,
+            1,
+            List.of(
+                new CandidateDetailResponse(21L, 1, 1, List.of(new VoterResponse("테스트1")), compareStore(3L)),
+                new CandidateDetailResponse(22L, 2, 0, List.of(), compareStore(5L))
+            ),
+            new ViewerResponse(1L, true, false, null, null, "캐치러버"),
+            OffsetDateTime.of(2026, 11, 6, 19, 30, 0, 0, ZoneOffset.ofHours(9)),
+            OffsetDateTime.of(2026, 11, 6, 20, 10, 0, 0, ZoneOffset.ofHours(9))
         );
     }
 

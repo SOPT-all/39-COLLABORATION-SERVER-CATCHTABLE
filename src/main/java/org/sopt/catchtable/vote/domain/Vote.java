@@ -88,4 +88,17 @@ public class Vote extends BaseEntity {
             .mapToObj(i -> VoteCandidate.create(this, stores.get(i), i + 1))
             .toList();
     }
+
+    public boolean isClosed() {
+        return status == VoteStatus.CLOSED;
+    }
+
+    public void close() {
+        if (isClosed()) {
+            return;
+        }
+
+        status = VoteStatus.CLOSED;
+        closedAt = LocalDateTime.now();
+    }
 }
