@@ -7,11 +7,13 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import org.sopt.catchtable.global.response.BaseResponse;
 import org.sopt.catchtable.global.response.SuccessCode;
 import org.sopt.catchtable.vote.dto.request.CreateVoteRequest;
+import org.sopt.catchtable.vote.dto.request.SubmitBallotRequest;
 import org.sopt.catchtable.vote.dto.response.CreateVoteResponse;
 import org.sopt.catchtable.vote.dto.response.VoteDetailResponse;
 import org.sopt.catchtable.vote.service.VoteDetailQueryService;
@@ -19,6 +21,7 @@ import org.sopt.catchtable.vote.service.VoteService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -159,5 +162,72 @@ public class VoteController {
     ) {
         VoteDetailResponse response = voteDetailQueryService.getVoteDetail(voteId, userId);
         return ResponseEntity.ok(BaseResponse.success(SuccessCode.SUCCESS, response));
+    }
+
+    @PostMapping("/{voteId}/ballots/me")
+    @Operation(
+        summary = "내 표 제출",
+        description = """
+            후보 하나를 선택해 닉네임과 함께 표를 제출합니다. 재투표는 지원하지 않습니다.
+
+            **요청 규칙**
+            - `candidateId`는 해당 투표의 후보 ID 하나여야 합니다. 매장 ID가 아닙니다.
+            - `nickname`은 앞뒤 공백을 제거한 뒤 1~15자여야 하며, 공백만 입력할 수 없습니다.
+
+            **응답 규칙**
+            - 성공하면 표를 저장한 최신 투표 현황을 투표 상세 조회(API 4)와 같은 구조로 반환합니다.
+            - 같은 사용자가 다시 제출하면 기존 표를 바꾸지 않고 `409 ALREADY_VOTED`를 반환합니다.
+            """
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "표 제출 성공"),
+        @ApiResponse(responseCode = "400", description = """
+            - `INVALID_VOTE_CANDIDATE`: 해당 투표에 속하지 않은 후보
+            - `INVALID_NICKNAME`: 공백뿐이거나 15자를 초과한 닉네임
+            - `INVALID_REQUEST`: voteId·candidateId 형식 오류, 요청 본문 누락 또는 JSON 형식 오류
+            """),
+        @ApiResponse(responseCode = "401", description = "X-User-Id 헤더 없음 / 빈 값 / 숫자 아님 / 존재하지 않는 사용자"),
+        @ApiResponse(responseCode = "404", description = "`VOTE_NOT_FOUND`: 존재하지 않는 투표"),
+        @ApiResponse(responseCode = "409", description = "`ALREADY_VOTED`: 이미 참여했거나 `VOTE_CLOSED`: 종료된 투표"),
+        @ApiResponse(responseCode = "500", description = "서버 오류")
+    })
+    public ResponseEntity<BaseResponse<VoteDetailResponse>> submitBallot(
+        @Parameter(name = "X-User-Id", description = "목 회원 ID", required = true, example = "2")
+        @RequestHeader("X-User-Id") Long userId,
+        @Parameter(description = "투표 ID (1 이상)", required = true, example = "10")
+        @PathVariable @Positive(message = "투표 ID는 1 이상이어야 합니다.") Long voteId,
+        @Valid @RequestBody SubmitBallotRequest request
+    ) {
+        VoteDetailResponse response = voteService.submitBallot(userId, voteId, request);
+        return ResponseEntity.ok(BaseResponse.success(SuccessCode.SUCCESS, response));
+    }
+
+    @PatchMapping("/{voteId}/close")
+    @Operation(
+        summary = "투표 종료",
+        description = """
+            투표 생성자만 진행 중인 투표를 종료합니다. 요청 본문은 없습니다.
+
+            성공하면 `status`가 `CLOSED`이고 `closedAt`이 채워진 최신 투표 현황을
+            투표 상세 조회(API 4)와 같은 구조로 반환합니다. 종료된 투표에는 표를 제출할 수 없습니다.
+            """
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "투표 종료 성공"),
+        @ApiResponse(responseCode = "400", description = "`INVALID_REQUEST`: voteId 형식 오류"),
+        @ApiResponse(responseCode = "401", description = "X-User-Id 헤더 없음 / 빈 값 / 숫자 아님 / 존재하지 않는 사용자"),
+        @ApiResponse(responseCode = "403", description = "`VOTE_CLOSE_FORBIDDEN`: 투표 생성자가 아님"),
+        @ApiResponse(responseCode = "404", description = "`VOTE_NOT_FOUND`: 존재하지 않는 투표"),
+        @ApiResponse(responseCode = "409", description = "`VOTE_ALREADY_CLOSED`: 이미 종료된 투표"),
+        @ApiResponse(responseCode = "500", description = "서버 오류")
+    })
+    public ResponseEntity<BaseResponse<VoteDetailResponse>> closeVote(
+        @Parameter(name = "X-User-Id", description = "목 회원 ID", required = true, example = "1")
+        @RequestHeader("X-User-Id") Long userId,
+        @Parameter(description = "투표 ID (1 이상)", required = true, example = "10")
+        @PathVariable @Positive(message = "투표 ID는 1 이상이어야 합니다.") Long voteId
+    ) {
+        VoteDetailResponse response = voteService.closeVote(userId, voteId);
+        return ResponseEntity.ok(BaseResponse.success(SuccessCode.VOTE_CLOSED_SUCCESS, response));
     }
 }
