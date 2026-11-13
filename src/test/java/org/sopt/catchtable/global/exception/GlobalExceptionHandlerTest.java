@@ -10,10 +10,15 @@ import org.junit.jupiter.api.Test;
 import org.sopt.catchtable.global.response.BaseResponse;
 import org.sopt.catchtable.global.response.ValidationError;
 import org.springframework.core.MethodParameter;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MissingRequestHeaderException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
@@ -118,6 +123,51 @@ class GlobalExceptionHandlerTest {
             ErrorCode.INVALID_REQUEST,
             java.util.List.of(new ValidationError("voteId", "요청 값의 형식이 올바르지 않습니다."))
         ));
+    }
+
+    @DisplayName("존재하지 않는 경로로 요청하면 서버 오류가 아니라 경로를 찾을 수 없다는 404로 바뀐다")
+    @Test
+    void noResourceFoundIsConvertedToNotFound() {
+        // given
+        NoResourceFoundException exception =
+            new NoResourceFoundException(HttpMethod.POST, "/api/v1/votez", "api/v1/votez");
+
+        // when
+        ResponseEntity<BaseResponse<Void>> response = handler.handleNoResourceFound(exception, request());
+
+        // then
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(response.getBody()).isEqualTo(BaseResponse.failure(ErrorCode.RESOURCE_NOT_FOUND));
+    }
+
+    @DisplayName("지원하지 않는 HTTP 메서드로 요청하면 서버 오류가 아니라 405로 바뀐다")
+    @Test
+    void methodNotSupportedIsConvertedToMethodNotAllowed() {
+        // given
+        HttpRequestMethodNotSupportedException exception = new HttpRequestMethodNotSupportedException("GET");
+
+        // when
+        ResponseEntity<BaseResponse<Void>> response = handler.handleMethodNotSupported(exception, request());
+
+        // then
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.METHOD_NOT_ALLOWED);
+        assertThat(response.getBody()).isEqualTo(BaseResponse.failure(ErrorCode.METHOD_NOT_ALLOWED));
+    }
+
+    @DisplayName("지원하지 않는 Content-Type으로 요청하면 서버 오류가 아니라 415로 바뀐다")
+    @Test
+    void mediaTypeNotSupportedIsConvertedToUnsupportedMediaType() {
+        // given
+        HttpMediaTypeNotSupportedException exception = new HttpMediaTypeNotSupportedException(
+            MediaType.TEXT_PLAIN, java.util.List.of(MediaType.APPLICATION_JSON)
+        );
+
+        // when
+        ResponseEntity<BaseResponse<Void>> response = handler.handleMediaTypeNotSupported(exception, request());
+
+        // then
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNSUPPORTED_MEDIA_TYPE);
+        assertThat(response.getBody()).isEqualTo(BaseResponse.failure(ErrorCode.UNSUPPORTED_MEDIA_TYPE));
     }
 
     @Test

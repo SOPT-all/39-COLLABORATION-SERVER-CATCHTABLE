@@ -10,6 +10,9 @@ import org.sopt.catchtable.global.response.ValidationError;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 import org.springframework.context.MessageSourceResolvable;
 import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
@@ -79,6 +82,36 @@ public class GlobalExceptionHandler {
     ) {
         log.warn("Client request validation failed: {} {}", request.getMethod(), request.getRequestURI());
         return failure(ErrorCode.INVALID_REQUEST, extractValidationErrors(exception));
+    }
+
+    // 클라이언트의 잘못된 경로·메서드·Content-Type 요청
+    // 서버 오류가 아니므로 500 대신 알맞은 4xx로 응답하고, 스택트레이스 없이 warn으로만 남긴다
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<BaseResponse<Void>> handleNoResourceFound(
+        NoResourceFoundException exception,
+        HttpServletRequest request
+    ) {
+        log.warn("Resource not found: {} {}", request.getMethod(), request.getRequestURI());
+        return failure(ErrorCode.RESOURCE_NOT_FOUND);
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<BaseResponse<Void>> handleMethodNotSupported(
+        HttpRequestMethodNotSupportedException exception,
+        HttpServletRequest request
+    ) {
+        log.warn("Method not allowed: {} {}", request.getMethod(), request.getRequestURI());
+        return failure(ErrorCode.METHOD_NOT_ALLOWED);
+    }
+
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<BaseResponse<Void>> handleMediaTypeNotSupported(
+        HttpMediaTypeNotSupportedException exception,
+        HttpServletRequest request
+    ) {
+        log.warn("Unsupported media type '{}': {} {}",
+            exception.getContentType(), request.getMethod(), request.getRequestURI());
+        return failure(ErrorCode.UNSUPPORTED_MEDIA_TYPE);
     }
 
     @ExceptionHandler(HandlerMethodValidationException.class)

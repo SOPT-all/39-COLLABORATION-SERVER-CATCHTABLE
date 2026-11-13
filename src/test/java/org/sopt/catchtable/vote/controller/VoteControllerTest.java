@@ -6,6 +6,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -137,6 +138,32 @@ class VoteControllerTest {
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.success").value(false))
             .andExpect(jsonPath("$.code").value("INVALID_VOTE_CANDIDATES"));
+    }
+
+    @DisplayName("JSON이 아닌 형식으로 보내면 투표를 만들 수 없고, 지원하지 않는 형식이라고 알려준다")
+    @Test
+    void createVoteWithUnsupportedContentType() throws Exception {
+        // given
+        MockHttpServletRequestBuilder request = post(CREATE_VOTE_URL)
+            .contentType(MediaType.TEXT_PLAIN)
+            .header("X-User-Id", "1")
+            .content(VALID_BODY);
+
+        // when & then
+        mockMvc.perform(request)
+            .andExpect(status().isUnsupportedMediaType())
+            .andExpect(jsonPath("$.code").value("UNSUPPORTED_MEDIA_TYPE"));
+
+        then(voteService).should(never()).createVote(any(), any());
+    }
+
+    @DisplayName("투표 생성 주소에 GET으로 요청하면, 지원하지 않는 메서드라고 알려준다")
+    @Test
+    void getOnCreateVoteUrl() throws Exception {
+        // when & then
+        mockMvc.perform(get(CREATE_VOTE_URL).header("X-User-Id", "1"))
+            .andExpect(status().isMethodNotAllowed())
+            .andExpect(jsonPath("$.code").value("METHOD_NOT_ALLOWED"));
     }
 
     private MockHttpServletRequestBuilder createVoteRequest() {
