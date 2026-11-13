@@ -10,7 +10,7 @@ import org.sopt.catchtable.user.service.UserService;
 import org.sopt.catchtable.vote.domain.Vote;
 import org.sopt.catchtable.vote.domain.VoteCandidate;
 import org.sopt.catchtable.vote.domain.VoteStatus;
-import org.sopt.catchtable.vote.dto.MyActiveVoteResponse;
+import org.sopt.catchtable.vote.dto.response.MyActiveVoteResponse;
 import org.sopt.catchtable.vote.dto.request.CreateVoteRequest;
 import org.sopt.catchtable.vote.dto.response.CreateVoteResponse;
 import org.sopt.catchtable.vote.repository.VoteCandidateRepository;
@@ -54,8 +54,9 @@ public class VoteService {
     }
 
     public MyActiveVoteResponse getMyActiveVote(Long userId) {
+        userService.getAuthorizedUser(userId);
         Optional<Vote> voteOptional =
-                voteRepository.findFirstByHostUser_IdAndStatusOrderByCreatedAtDesc(
+                voteRepository.findFirstByHostUser_IdAndStatusOrderByCreatedAtDescIdDesc(
                         userId,
                         VoteStatus.OPEN
                 );
@@ -74,7 +75,7 @@ public class VoteService {
             MyActiveVoteResponse.VoteResponse voteResponse =
                     MyActiveVoteResponse.VoteResponse.builder()
                             .voteId(vote.getId())
-                            .candidateCount(2)
+                            .candidateCount(Vote.CANDIDATE_COUNT)
                             .createdAt(createdAt)
                             .build();
 

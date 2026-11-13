@@ -1,4 +1,4 @@
-package org.sopt.catchtable.vote.dto;
+package org.sopt.catchtable.vote.dto.response;
 
 import lombok.Builder;
 import lombok.Getter;
