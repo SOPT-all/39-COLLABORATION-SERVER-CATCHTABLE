@@ -7,6 +7,7 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import org.sopt.catchtable.global.response.BaseResponse;
 import org.sopt.catchtable.global.response.SuccessCode;
@@ -121,12 +122,12 @@ public class VoteController {
             | 득표율 | `voteCount / participantCount` (`participantCount`가 0이면 0%) |
 
             `displayName`, `defaultNickname`은 사용자 입력 그대로 내려오므로 HTML이 아닌 텍스트로 렌더링해 주세요.
-            헤더 오류와 `voteId` 오류가 함께 있으면 401이 우선합니다.
+            `X-User-Id`가 없거나 형식이 틀리면 401이 가장 먼저이고, 그다음 `voteId` 형식 오류(0 이하 포함) 400, 존재하지 않는 사용자 401 순서로 확인합니다.
             """
     )
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "조회 성공"),
-        @ApiResponse(responseCode = "400", description = "voteId 형식 오류 (abc, 1.5, 공백 등)",
+        @ApiResponse(responseCode = "400", description = "voteId 형식 오류 (abc, 1.5, 공백, 0 이하 등)",
             content = @Content(mediaType = "application/json", examples = @ExampleObject(value = """
                 {
                   "success": false,
@@ -153,8 +154,8 @@ public class VoteController {
     public ResponseEntity<BaseResponse<VoteDetailResponse>> getVoteDetail(
         @Parameter(name = "X-User-Id", description = "목 회원 ID", required = true, example = "2")
         @RequestHeader("X-User-Id") Long userId,
-        @Parameter(description = "투표 ID", required = true, example = "10")
-        @PathVariable Long voteId
+        @Parameter(description = "투표 ID (1 이상)", required = true, example = "10")
+        @PathVariable @Positive(message = "투표 ID는 1 이상이어야 합니다.") Long voteId
     ) {
         VoteDetailResponse response = voteDetailQueryService.getVoteDetail(voteId, userId);
         return ResponseEntity.ok(BaseResponse.success(SuccessCode.SUCCESS, response));
