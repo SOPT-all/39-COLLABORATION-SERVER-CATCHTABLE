@@ -15,6 +15,10 @@ import org.junit.jupiter.api.Test;
 import org.sopt.catchtable.global.exception.BusinessException;
 import org.sopt.catchtable.global.exception.ErrorCode;
 import org.sopt.catchtable.store.domain.Store;
+import org.sopt.catchtable.store.repository.StoreAiSummaryRepository;
+import org.sopt.catchtable.store.repository.StoreAmenityRepository;
+import org.sopt.catchtable.store.repository.StoreImageRepository;
+import org.sopt.catchtable.store.repository.StoreMenuRepository;
 import org.sopt.catchtable.store.repository.StoreRepository;
 
 class StoreServiceTest {
@@ -25,7 +29,13 @@ class StoreServiceTest {
     @BeforeEach
     void setUp() {
         storeRepository = mock(StoreRepository.class);
-        storeService = new StoreService(storeRepository);
+        storeService = new StoreService(
+            storeRepository,
+            mock(StoreImageRepository.class),
+            mock(StoreMenuRepository.class),
+            mock(StoreAiSummaryRepository.class),
+            mock(StoreAmenityRepository.class)
+        );
     }
 
     @DisplayName("요청한 매장을 모두 찾으면, 조회 순서와 관계없이 매장 ID로 각 매장을 찾을 수 있다")
