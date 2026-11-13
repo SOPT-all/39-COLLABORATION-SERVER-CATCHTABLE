@@ -12,6 +12,7 @@ import org.sopt.catchtable.vote.repository.BallotRepository;
 import org.sopt.catchtable.vote.repository.VoteCandidateRepository;
 import org.sopt.catchtable.vote.repository.VoteRepository;
 import org.springframework.dao.PessimisticLockingFailureException;
+import org.springframework.dao.QueryTimeoutException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -64,7 +65,7 @@ public class VoteCommandService {
         try {
             return voteRepository.findByIdForUpdate(voteId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.VOTE_NOT_FOUND));
-        } catch (PessimisticLockingFailureException exception) {
+        } catch (PessimisticLockingFailureException | QueryTimeoutException exception) {
             throw new BusinessException(ErrorCode.VOTE_PROCESSING);
         }
     }
