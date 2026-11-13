@@ -251,6 +251,21 @@ class VoteControllerTest {
         then(voteDetailQueryService).should(never()).getVoteDetail(any(), any());
     }
 
+    @DisplayName("투표 ID가 공백이면 서버 오류가 아니라 잘못된 요청으로 거절된다")
+    @Test
+    void getVoteDetailWithBlankVoteId() throws Exception {
+        // given
+        MockHttpServletRequestBuilder request = get("/api/v1/votes/%20").header("X-User-Id", "2");
+
+        // when & then
+        mockMvc.perform(request)
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.code").value("INVALID_REQUEST"))
+            .andExpect(jsonPath("$.data[0].field").value("voteId"));
+
+        then(voteDetailQueryService).should(never()).getVoteDetail(any(), any());
+    }
+
     @DisplayName("없는 투표를 조회하면 404와 함께 투표를 찾을 수 없다고 알려준다")
     @Test
     void getUnknownVoteDetail() throws Exception {

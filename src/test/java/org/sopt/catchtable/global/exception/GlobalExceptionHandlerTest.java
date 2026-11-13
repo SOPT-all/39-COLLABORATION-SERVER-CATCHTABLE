@@ -17,6 +17,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.bind.MissingPathVariableException;
 import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -125,6 +126,39 @@ class GlobalExceptionHandlerTest {
         ));
     }
 
+    @DisplayName("경로 변수가 공백이라 값이 비게 되면, 서버 오류가 아니라 어느 값이 잘못됐는지 담은 잘못된 요청(400)으로 바뀐다")
+    @Test
+    void blankPathVariableIsConvertedToBadRequest() {
+        // given
+        MissingPathVariableException exception =
+            new MissingPathVariableException("voteId", voteIdPathParameter(), true);
+
+        // when
+        ResponseEntity<?> response = handler.handleMissingPathVariable(exception, request());
+
+        // then
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isEqualTo(BaseResponse.failure(
+            ErrorCode.INVALID_REQUEST,
+            java.util.List.of(new ValidationError("voteId", "요청 값의 형식이 올바르지 않습니다."))
+        ));
+    }
+
+    @DisplayName("경로 변수 이름이 URL과 맞지 않아 처음부터 값이 없으면, 서버 코드 문제이므로 500으로 바뀐다")
+    @Test
+    void pathVariableMissingBeforeConversionIsConvertedToServerError() {
+        // given
+        MissingPathVariableException exception =
+            new MissingPathVariableException("voteId", voteIdPathParameter(), false);
+
+        // when
+        ResponseEntity<?> response = handler.handleMissingPathVariable(exception, request());
+
+        // then
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+        assertThat(response.getBody()).isEqualTo(BaseResponse.failure(ErrorCode.INTERNAL_SERVER_ERROR));
+    }
+
     @DisplayName("존재하지 않는 경로로 요청하면 서버 오류가 아니라 경로를 찾을 수 없다는 404로 바뀐다")
     @Test
     void noResourceFoundIsConvertedToNotFound() {
@@ -184,6 +218,15 @@ class GlobalExceptionHandlerTest {
     private MethodParameter headerParameter() {
         try {
             Method method = HeaderFixture.class.getDeclaredMethod("handle", String.class);
+            return new MethodParameter(method, 0);
+        } catch (NoSuchMethodException exception) {
+            throw new IllegalStateException(exception);
+        }
+    }
+
+    private MethodParameter voteIdPathParameter() {
+        try {
+            Method method = HeaderFixture.class.getDeclaredMethod("voteIdPath", Long.class);
             return new MethodParameter(method, 0);
         } catch (NoSuchMethodException exception) {
             throw new IllegalStateException(exception);
