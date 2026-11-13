@@ -1,5 +1,8 @@
 package org.sopt.catchtable.vote.dto.response;
 
+import static io.swagger.v3.oas.annotations.media.Schema.RequiredMode.REQUIRED;
+
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
@@ -16,13 +19,27 @@ import org.sopt.catchtable.vote.domain.VoteStatus;
  * 투표 상세 응답. API 4(투표 상세 조회)·5(표 제출)·6(투표 종료)이 같은 구조를 쓴다.
  * 연관 엔티티는 getId()만 읽으므로 지연 로딩 프록시여도 추가 쿼리가 없다.
  */
+@Schema(description = "투표 상세. 표 제출(API 5)·투표 종료(API 6)도 같은 구조로 응답한다")
 public record VoteDetailResponse(
+    @Schema(description = "투표 ID", example = "10", requiredMode = REQUIRED)
     Long voteId,
+
+    @Schema(description = "투표 상태", example = "OPEN", requiredMode = REQUIRED)
     VoteStatus status,
+
+    @Schema(description = "표를 제출한 사람 수. 후보별 voteCount의 합과 같다", example = "2", requiredMode = REQUIRED)
     int participantCount,
+
+    @Schema(description = "후보 목록. displayOrder 오름차순, 항상 2개", requiredMode = REQUIRED)
     List<CandidateDetailResponse> candidates,
+
+    @Schema(description = "요청자 정보", requiredMode = REQUIRED)
     ViewerResponse viewer,
+
+    @Schema(description = "투표 생성 시각 (+09:00, 초 단위)", example = "2026-11-06T19:30:00+09:00", requiredMode = REQUIRED)
     OffsetDateTime createdAt,
+
+    @Schema(description = "투표 종료 시각. 진행 중이면 null", example = "null", nullable = true, requiredMode = REQUIRED)
     OffsetDateTime closedAt
 ) {
 
@@ -74,11 +91,21 @@ public record VoteDetailResponse(
         }
     }
 
+    @Schema(description = "투표 후보")
     public record CandidateDetailResponse(
+        @Schema(description = "후보 ID. 표 제출(API 5) 요청에 사용", example = "21", requiredMode = REQUIRED)
         Long candidateId,
+
+        @Schema(description = "후보 노출 순서 (1, 2). 투표 생성 시 보낸 storeIds 순서", example = "1", requiredMode = REQUIRED)
         Integer displayOrder,
+
+        @Schema(description = "후보별 득표 수. 표가 없으면 0", example = "2", requiredMode = REQUIRED)
         int voteCount,
+
+        @Schema(description = "후보를 선택한 투표자 목록. 최신 투표순, 표가 없으면 []", requiredMode = REQUIRED)
         List<VoterResponse> voters,
+
+        @Schema(description = "매장 비교 정보", requiredMode = REQUIRED)
         CompareStoreResponse store
     ) {
 
@@ -113,7 +140,12 @@ public record VoteDetailResponse(
         }
     }
 
-    public record VoterResponse(String displayName) {
+    @Schema(description = "투표자")
+    public record VoterResponse(
+        @Schema(description = "투표할 때 입력한 닉네임 (최대 15자). 사용자 입력 그대로이므로 텍스트로 렌더링할 것",
+            example = "테스트2", requiredMode = REQUIRED)
+        String displayName
+    ) {
 
         static VoterResponse from(Ballot ballot) {
             return new VoterResponse(ballot.getDisplayName());
@@ -121,12 +153,26 @@ public record VoteDetailResponse(
     }
 
     // 투표 전이면 selectedCandidateId, displayName은 null
+    @Schema(description = "요청자(X-User-Id) 기준 정보")
     public record ViewerResponse(
+        @Schema(description = "요청자 ID", example = "2", requiredMode = REQUIRED)
         Long userId,
+
+        @Schema(description = "요청자가 투표 생성자인지. 투표 종료 버튼 노출에 사용", example = "false", requiredMode = REQUIRED)
         boolean isHost,
+
+        @Schema(description = "요청자가 투표했는지", example = "true", requiredMode = REQUIRED)
         boolean hasVoted,
+
+        @Schema(description = "요청자가 선택한 후보 ID. 투표 전이면 null", example = "21", nullable = true,
+            requiredMode = REQUIRED)
         Long selectedCandidateId,
+
+        @Schema(description = "요청자가 투표할 때 입력한 닉네임. 투표 전이면 null", example = "테스트1", nullable = true,
+            requiredMode = REQUIRED)
         String displayName,
+
+        @Schema(description = "요청자의 계정 닉네임. 닉네임 입력칸 기본값으로 사용", example = "테스트1", requiredMode = REQUIRED)
         String defaultNickname
     ) {
 

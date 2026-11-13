@@ -1,5 +1,6 @@
 package org.sopt.catchtable.store.dto.response;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
 import org.sopt.catchtable.store.domain.*;
@@ -31,34 +32,53 @@ public class StoreDetailResponse {
 
     @Getter
     @Builder
+    @Schema(description = "가까운 역 정보")
     public static class StationResponse {
+        @Schema(description = "역 이름", example = "강남역", requiredMode = Schema.RequiredMode.REQUIRED)
         private String name;
+        @Schema(description = "호선 목록", example = "[\"2\", \"신분당\"]", requiredMode = Schema.RequiredMode.REQUIRED)
         private List<String> lines;
+        @Schema(description = "역까지 거리(m)", example = "350", requiredMode = Schema.RequiredMode.REQUIRED)
         private Integer distanceMeters;
     }
 
     @Getter
     @Builder
+    @Schema(description = "대표 메뉴")
     public static class RepresentativeMenuResponse {
+        @Schema(description = "메뉴 ID", example = "101", requiredMode = Schema.RequiredMode.REQUIRED)
         private Long menuId;
+        @Schema(description = "메뉴 이름", example = "홍탕 훠궈", requiredMode = Schema.RequiredMode.REQUIRED)
         private String name;
+        @Schema(description = "가격(원)", example = "32000", requiredMode = Schema.RequiredMode.REQUIRED)
         private Integer price;
+        @Schema(description = "true면 '32,000원~'처럼 최저가로 표시", example = "true", requiredMode = Schema.RequiredMode.REQUIRED)
         private Boolean isPriceFrom;
+        @Schema(description = "메뉴 이미지 URL", example = "https://example.com/menu101.jpg", requiredMode = Schema.RequiredMode.REQUIRED)
         private String imageUrl;
+        @Schema(description = "노출 순서", example = "1", requiredMode = Schema.RequiredMode.REQUIRED)
         private Integer displayOrder;
     }
 
     @Getter
     @Builder
+    @Schema(description = "AI 요약")
     public static class AiSummaryResponse {
+        @Schema(description = "요약 제목", example = "회식하기 좋은 훠궈 맛집", requiredMode = Schema.RequiredMode.REQUIRED)
         private String title;
+        @Schema(description = "요약 문장 (최대 3개)", example = "[\"넓은 단체석\", \"친절한 서비스\"]",
+            requiredMode = Schema.RequiredMode.REQUIRED)
         private List<String> lines;
     }
 
     @Getter
     @Builder
+    @Schema(description = "편의 정보")
     public static class AmenityResponse {
+        @Schema(description = "편의 정보 종류. PARKING(주차) / LIQUOR_CORKAGE(주류·콜키지)", example = "PARKING",
+            allowableValues = {"PARKING", "LIQUOR_CORKAGE"}, requiredMode = Schema.RequiredMode.REQUIRED)
         private String category;
+        @Schema(description = "안내 문구", example = "건물 내 2시간 무료", requiredMode = Schema.RequiredMode.REQUIRED)
         private String content;
     }
 
