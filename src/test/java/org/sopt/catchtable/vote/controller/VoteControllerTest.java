@@ -19,6 +19,8 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.sopt.catchtable.global.exception.BusinessException;
 import org.sopt.catchtable.global.exception.ErrorCode;
 import org.sopt.catchtable.global.exception.GlobalExceptionHandler;
@@ -262,6 +264,23 @@ class VoteControllerTest {
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.code").value("INVALID_REQUEST"))
             .andExpect(jsonPath("$.data[0].field").value("voteId"));
+
+        then(voteDetailQueryService).should(never()).getVoteDetail(any(), any());
+    }
+
+    @DisplayName("투표 ID가 0 이하이면 조회하지 않고, 1 이상이어야 한다는 잘못된 요청으로 거절된다")
+    @ParameterizedTest(name = "voteId = {0}")
+    @ValueSource(strings = {"0", "-1"})
+    void getVoteDetailWithNonPositiveVoteId(String voteId) throws Exception {
+        // given
+        MockHttpServletRequestBuilder request = get(VOTE_DETAIL_URL, voteId).header("X-User-Id", "2");
+
+        // when & then
+        mockMvc.perform(request)
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.code").value("INVALID_REQUEST"))
+            .andExpect(jsonPath("$.data[0].field").value("voteId"))
+            .andExpect(jsonPath("$.data[0].message").value("투표 ID는 1 이상이어야 합니다."));
 
         then(voteDetailQueryService).should(never()).getVoteDetail(any(), any());
     }
