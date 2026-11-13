@@ -18,6 +18,7 @@ public enum ErrorCode {
     ALREADY_VOTED(HttpStatus.CONFLICT, "ALREADY_VOTED", "이미 해당 투표에 참여했습니다."),
     VOTE_CLOSED(HttpStatus.CONFLICT, "VOTE_CLOSED", "종료된 투표에는 참여할 수 없습니다."),
     VOTE_ALREADY_CLOSED(HttpStatus.CONFLICT, "VOTE_ALREADY_CLOSED", "이미 종료된 투표입니다."),
+    VOTE_PROCESSING(HttpStatus.CONFLICT, "VOTE_PROCESSING", "다른 투표 요청을 처리 중입니다. 잠시 후 다시 시도해 주세요."),
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_SERVER_ERROR", "서버 내부 오류입니다.");
 
     private final HttpStatus httpStatus;

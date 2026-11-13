@@ -188,7 +188,11 @@ public class VoteController {
             """),
         @ApiResponse(responseCode = "401", description = "X-User-Id 헤더 없음 / 빈 값 / 숫자 아님 / 존재하지 않는 사용자"),
         @ApiResponse(responseCode = "404", description = "`VOTE_NOT_FOUND`: 존재하지 않는 투표"),
-        @ApiResponse(responseCode = "409", description = "`ALREADY_VOTED`: 이미 참여했거나 `VOTE_CLOSED`: 종료된 투표"),
+        @ApiResponse(responseCode = "409", description = """
+            - `ALREADY_VOTED`: 이미 참여한 사용자
+            - `VOTE_CLOSED`: 종료된 투표
+            - `VOTE_PROCESSING`: 같은 투표의 다른 요청을 처리 중
+            """),
         @ApiResponse(responseCode = "500", description = "서버 오류")
     })
     public ResponseEntity<BaseResponse<VoteDetailResponse>> submitBallot(
@@ -218,7 +222,10 @@ public class VoteController {
         @ApiResponse(responseCode = "401", description = "X-User-Id 헤더 없음 / 빈 값 / 숫자 아님 / 존재하지 않는 사용자"),
         @ApiResponse(responseCode = "403", description = "`VOTE_CLOSE_FORBIDDEN`: 투표 생성자가 아님"),
         @ApiResponse(responseCode = "404", description = "`VOTE_NOT_FOUND`: 존재하지 않는 투표"),
-        @ApiResponse(responseCode = "409", description = "`VOTE_ALREADY_CLOSED`: 이미 종료된 투표"),
+        @ApiResponse(responseCode = "409", description = """
+            - `VOTE_ALREADY_CLOSED`: 이미 종료된 투표
+            - `VOTE_PROCESSING`: 같은 투표의 다른 요청을 처리 중
+            """),
         @ApiResponse(responseCode = "500", description = "서버 오류")
     })
     public ResponseEntity<BaseResponse<VoteDetailResponse>> closeVote(
