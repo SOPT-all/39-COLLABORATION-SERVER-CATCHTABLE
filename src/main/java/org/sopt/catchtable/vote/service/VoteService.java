@@ -14,8 +14,6 @@ import org.sopt.catchtable.vote.dto.MyActiveVoteResponse;
 import org.sopt.catchtable.vote.dto.request.CreateVoteRequest;
 import org.sopt.catchtable.vote.dto.response.CreateVoteResponse;
 import org.sopt.catchtable.vote.repository.VoteCandidateRepository;
-import org.sopt.catchtable.vote.domain.VoteStatus;
-import org.sopt.catchtable.vote.dto.MyActiveVoteResponse;
 import org.sopt.catchtable.vote.repository.VoteRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
