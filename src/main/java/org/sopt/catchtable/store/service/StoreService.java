@@ -1,0 +1,115 @@
+package org.sopt.catchtable.store.service;
+
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
+import org.sopt.catchtable.global.exception.BusinessException;
+import org.sopt.catchtable.global.exception.ErrorCode;
+import org.sopt.catchtable.store.domain.Store;
+import org.sopt.catchtable.store.domain.StoreAiSummary;
+import org.sopt.catchtable.store.domain.StoreAmenity;
+import org.sopt.catchtable.store.domain.StoreImage;
+import org.sopt.catchtable.store.domain.StoreMenu;
+import org.sopt.catchtable.store.dto.response.StoreDetailResponse;
+import org.sopt.catchtable.store.repository.StoreAiSummaryRepository;
+import org.sopt.catchtable.store.repository.StoreAmenityRepository;
+import org.sopt.catchtable.store.repository.StoreImageRepository;
+import org.sopt.catchtable.store.repository.StoreMenuRepository;
+import org.sopt.catchtable.store.repository.StoreRepository;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
+public class StoreService {
+
+    private final StoreRepository storeRepository;
+    private final StoreImageRepository storeImageRepository;
+    private final StoreMenuRepository storeMenuRepository;
+    private final StoreAiSummaryRepository storeAiSummaryRepository;
+    private final StoreAmenityRepository storeAmenityRepository;
+
+    // 단건 조회: 공통 조회를 재사용하고 매장 존재 여부 확인
+    public StoreDetailResponse getStoreDetail(Long storeId) {
+        StoreDetailResponse response =
+                getStoreDetails(List.of(storeId)).get(storeId);
+
+        if (response == null) {
+            throw new BusinessException(ErrorCode.STORE_NOT_FOUND);
+        }
+
+        return response;
+    }
+
+    // 일괄 조회: 매장 ID별 상세 응답 반환
+    public Map<Long, StoreDetailResponse> getStoreDetails(
+            Collection<Long> storeIds
+    ) {
+        if (storeIds.isEmpty()) {
+            return Map.of();
+        }
+
+        // 매장 기본 정보 조회
+        List<Store> stores = storeRepository.findAllByIdIn(storeIds);
+
+        // 이미지·메뉴를 노출 순서대로 조회하고 매장별로 분류
+        Map<Long, List<StoreImage>> imagesByStoreId =
+                storeImageRepository
+                        .findAllByStoreIdInOrderByStoreIdAscDisplayOrderAsc(storeIds)
+                        .stream()
+                        .collect(Collectors.groupingBy(
+                                image -> image.getStore().getId()
+                        ));
+
+        Map<Long, List<StoreMenu>> menusByStoreId =
+                storeMenuRepository
+                        .findAllByStoreIdInOrderByStoreIdAscDisplayOrderAsc(storeIds)
+                        .stream()
+                        .collect(Collectors.groupingBy(
+                                menu -> menu.getStore().getId()
+                        ));
+
+        // 매장별 AI 요약 조회
+        Map<Long, StoreAiSummary> summariesByStoreId =
+                storeAiSummaryRepository.findAllByStoreIdIn(storeIds)
+                        .stream()
+                        .collect(Collectors.toMap(
+                                StoreAiSummary::getStoreId,
+                                Function.identity()
+                        ));
+
+        // 편의 정보를 조회하고 매장별로 분류
+        Map<Long, List<StoreAmenity>> amenitiesByStoreId =
+                storeAmenityRepository
+                        .findAllByStoreIdInOrderByStoreIdAscTypeAsc(storeIds)
+                        .stream()
+                        .collect(Collectors.groupingBy(
+                                amenity -> amenity.getStore().getId()
+                        ));
+
+        // 공통 변환 메서드로 매장별 상세 응답 구성
+        Map<Long, StoreDetailResponse> responses = new HashMap<>();
+
+        for (Store store : stores) {
+            Long storeId = store.getId();
+
+            responses.put(
+                    storeId,
+                    StoreDetailResponse.from(
+                            store,
+                            imagesByStoreId.getOrDefault(storeId, List.of()),
+                            menusByStoreId.getOrDefault(storeId, List.of()),
+                            summariesByStoreId.get(storeId),
+                            amenitiesByStoreId.getOrDefault(storeId, List.of())
+                    )
+            );
+        }
+
+        return responses;
+    }
+}
