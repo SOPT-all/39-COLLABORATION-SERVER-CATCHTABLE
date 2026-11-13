@@ -47,4 +47,15 @@ public class Ballot extends BaseEntity {
 
     @Column(name = "display_name", nullable = false, length = 15)
     private String displayName;
+
+    private Ballot(Vote vote, User user, VoteCandidate candidate, String displayName) {
+        this.vote = vote;
+        this.user = user;
+        this.candidate = candidate;
+        this.displayName = displayName;
+    }
+
+    public static Ballot create(Vote vote, User user, VoteCandidate candidate, String displayName) {
+        return new Ballot(vote, user, candidate, displayName);
+    }
 }
