@@ -9,12 +9,18 @@ import org.sopt.catchtable.user.domain.User;
 import org.sopt.catchtable.user.service.UserService;
 import org.sopt.catchtable.vote.domain.Vote;
 import org.sopt.catchtable.vote.domain.VoteCandidate;
+import org.sopt.catchtable.vote.domain.VoteStatus;
+import org.sopt.catchtable.vote.dto.response.MyActiveVoteResponse;
 import org.sopt.catchtable.vote.dto.request.CreateVoteRequest;
 import org.sopt.catchtable.vote.dto.response.CreateVoteResponse;
 import org.sopt.catchtable.vote.repository.VoteCandidateRepository;
 import org.sopt.catchtable.vote.repository.VoteRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -37,13 +43,45 @@ public class VoteService {
 
         // 조회 결과는 순서가 없으므로 요청 순서대로 재정렬
         List<Store> stores = storeIds.stream()
-            .map(storesById::get)
-            .toList();
+                .map(storesById::get)
+                .toList();
 
         Vote vote = voteRepository.save(Vote.create(hostUser));
         List<VoteCandidate> candidates = vote.createCandidates(stores);
         voteCandidateRepository.saveAll(candidates);
 
         return CreateVoteResponse.of(vote, candidates);
+    }
+
+    public MyActiveVoteResponse getMyActiveVote(Long userId) {
+        userService.getAuthorizedUser(userId);
+        Optional<Vote> voteOptional =
+                voteRepository.findFirstByHostUser_IdAndStatusOrderByCreatedAtDescIdDesc(
+                        userId,
+                        VoteStatus.OPEN
+                );
+
+        if (voteOptional.isEmpty()) {
+            return MyActiveVoteResponse.builder()
+                    .vote(null)
+                    .build();
+        } else {
+            Vote vote = voteOptional.get();
+
+            OffsetDateTime createdAt = vote.getCreatedAt()
+                    .atZone(ZoneId.of("Asia/Seoul"))
+                    .toOffsetDateTime();
+
+            MyActiveVoteResponse.VoteResponse voteResponse =
+                    MyActiveVoteResponse.VoteResponse.builder()
+                            .voteId(vote.getId())
+                            .candidateCount(Vote.CANDIDATE_COUNT)
+                            .createdAt(createdAt)
+                            .build();
+
+            return MyActiveVoteResponse.builder()
+                    .vote(voteResponse)
+                    .build();
+        }
     }
 }
