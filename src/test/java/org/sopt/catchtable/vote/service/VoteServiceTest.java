@@ -105,7 +105,7 @@ class VoteServiceTest {
             .allSatisfy(candidate -> assertThat(candidate.getVote().getId()).isEqualTo(10L));
     }
 
-    // 후보 규칙의 세부 경우는 VoteTest에서 검증하고, 여기서는 "조회 전에 거절한다"는 흐름만 확인한다
+    // 후보 규칙의 세부 경우는 VoteTest에서 검증하고, 여기서는 "조회 전에 거절"하는 흐름만 확인
     @DisplayName("후보 규칙을 어긴 요청은 사용자나 매장을 조회하지 않고 거절한다")
     @Test
     void createVoteWithInvalidCandidates() {

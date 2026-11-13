@@ -12,8 +12,8 @@ import tools.jackson.databind.DatabindException;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * application.yaml의 Jackson 설정(spring.jackson.*)이 실제 요청 변환에 적용되는지 확인한다.
- * 컨트롤러 테스트(standaloneSetup)는 기본 Jackson을 쓰므로, 설정 검증은 스프링 컨텍스트에서 한다.
+ * application.yaml의 Jackson 설정이 실제 요청 변환에 적용되는지 확인한다.
+ * 컨트롤러 테스트(standaloneSetup)는 이 설정을 읽지 않아서 스프링 컨텍스트에서 따로 검증한다.
  */
 @SpringBootTest
 class JacksonConfigTest {

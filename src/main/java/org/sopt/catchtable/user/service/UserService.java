@@ -15,7 +15,7 @@ public class UserService {
 
     private final UserRepository userRepository;
 
-    // X-User-Id 헤더가 인증 수단이므로, 해당 사용자가 없으면 401로 처리
+    // X-User-Id가 인증 수단이므로 사용자가 없으면 401
     public User getAuthorizedUser(Long userId) {
         return userRepository.findById(userId)
             .orElseThrow(() -> new BusinessException(ErrorCode.UNAUTHORIZED));
