@@ -27,13 +27,13 @@ class CreateVoteResponseTest {
         TimeZone.setDefault(originalTimeZone);
     }
 
-    @DisplayName("서버 시간대가 UTC여도 투표 생성 시각은 서울 시각(+09:00)으로, 초 단위까지만 응답한다")
+    @DisplayName("DB에 저장된 KST 시각은 서버 시간대가 UTC여도 그대로 서울 시각(+09:00)으로, 초 단위까지만 응답한다")
     @Test
     void createdAtOnUtcServer() {
         // given
         TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
-        LocalDateTime utcCreatedAt = LocalDateTime.of(2026, 11, 6, 10, 30, 0, 500_850_000);
-        Vote vote = EntityFixture.savedVote(10L, EntityFixture.userWithId(1L), utcCreatedAt);
+        LocalDateTime kstCreatedAt = LocalDateTime.of(2026, 11, 6, 19, 30, 0, 500_850_000);
+        Vote vote = EntityFixture.savedVote(10L, EntityFixture.userWithId(1L), kstCreatedAt);
 
         // when
         CreateVoteResponse response = CreateVoteResponse.of(vote, List.of());
@@ -42,13 +42,13 @@ class CreateVoteResponseTest {
         assertThat(response.createdAt()).hasToString("2026-11-06T19:30+09:00");
     }
 
-    @DisplayName("서버 시간대가 서울이면 저장된 투표 생성 시각을 그대로 응답한다")
+    @DisplayName("서버 시간대가 서울이어도 같은 KST 시각에는 같은 응답을 준다")
     @Test
     void createdAtOnSeoulServer() {
         // given
         TimeZone.setDefault(TimeZone.getTimeZone("Asia/Seoul"));
-        LocalDateTime seoulCreatedAt = LocalDateTime.of(2026, 11, 6, 19, 30);
-        Vote vote = EntityFixture.savedVote(10L, EntityFixture.userWithId(1L), seoulCreatedAt);
+        LocalDateTime kstCreatedAt = LocalDateTime.of(2026, 11, 6, 19, 30, 0, 500_850_000);
+        Vote vote = EntityFixture.savedVote(10L, EntityFixture.userWithId(1L), kstCreatedAt);
 
         // when
         CreateVoteResponse response = CreateVoteResponse.of(vote, List.of());

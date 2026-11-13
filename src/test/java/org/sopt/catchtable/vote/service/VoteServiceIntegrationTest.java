@@ -3,7 +3,11 @@ package org.sopt.catchtable.vote.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
+import static org.assertj.core.api.Assertions.within;
 
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
@@ -96,6 +100,25 @@ class VoteServiceIntegrationTest {
                 tuple(response.voteId(), second.getId(), 1),
                 tuple(response.voteId(), first.getId(), 2)
             );
+    }
+
+    @DisplayName("투표 생성 시각은 서버 실행 환경과 관계없이 KST로 저장되고, 응답도 같은 시각을 돌려준다")
+    @Test
+    void createdAtIsStoredInKst() {
+        // given
+        User hostUser = saveUser("생성자");
+        Store first = saveStore("첫 번째 매장");
+        Store second = saveStore("두 번째 매장");
+        CreateVoteRequest request = new CreateVoteRequest(List.of(first.getId(), second.getId()));
+
+        // when
+        CreateVoteResponse response = voteService.createVote(hostUser.getId(), request);
+
+        // then
+        LocalDateTime storedCreatedAt = voteRepository.findById(response.voteId()).orElseThrow().getCreatedAt();
+        LocalDateTime nowInKst = LocalDateTime.now(ZoneId.of("Asia/Seoul"));
+        assertThat(storedCreatedAt).isCloseTo(nowInKst, within(1, ChronoUnit.MINUTES));
+        assertThat(response.createdAt().toLocalDateTime()).isEqualTo(storedCreatedAt.withNano(0));
     }
 
     @DisplayName("존재하지 않는 매장이 후보에 있으면 투표와 후보 모두 저장되지 않는다")

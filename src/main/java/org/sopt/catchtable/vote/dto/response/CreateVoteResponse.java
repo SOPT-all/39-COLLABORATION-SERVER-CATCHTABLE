@@ -43,13 +43,11 @@ public record CreateVoteResponse(
         );
     }
 
-    // @CreationTimestamp의 LocalDateTime은 JVM 기본 시간대 기준이므로,
-    // 그 시간대로 해석한 뒤 서울 시각으로 바꾼다 (JVM이 UTC여도 응답은 +09:00 기준으로 맞음)
+    // DB 시각은 KST 기준으로 저장되므로(CatchtableApplication) 서버 시간대와 관계없이 서울 시각으로 해석한다
     // 명세 형식(2026-11-06T19:30:00+09:00)에 맞춰 초 단위로 자른다
     private static OffsetDateTime toSeoulOffsetDateTime(LocalDateTime dateTime) {
         return dateTime.truncatedTo(ChronoUnit.SECONDS)
-            .atZone(ZoneId.systemDefault())
-            .withZoneSameInstant(SEOUL)
+            .atZone(SEOUL)
             .toOffsetDateTime();
     }
 
