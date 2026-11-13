@@ -22,30 +22,16 @@ class UserServiceTest {
         User user = mock(User.class);
         given(userRepository.findById(1L)).willReturn(Optional.of(user));
 
-        User result = userService.getAuthorizedUser("1");
+        User result = userService.getAuthorizedUser(1L);
 
         assertThat(result).isSameAs(user);
-    }
-
-    @Test
-    void 헤더가_없으면_UNAUTHORIZED를_반환한다() {
-        assertUnauthorized(() -> userService.getAuthorizedUser(null));
-    }
-
-    @Test
-    void 숫자가_아닌_헤더면_UNAUTHORIZED를_반환한다() {
-        assertUnauthorized(() -> userService.getAuthorizedUser("not-a-number"));
     }
 
     @Test
     void 등록되지_않은_사용자면_UNAUTHORIZED를_반환한다() {
         given(userRepository.findById(99L)).willReturn(Optional.empty());
 
-        assertUnauthorized(() -> userService.getAuthorizedUser("99"));
-    }
-
-    private void assertUnauthorized(Runnable action) {
-        assertThatThrownBy(action::run)
+        assertThatThrownBy(() -> userService.getAuthorizedUser(99L))
             .isInstanceOf(BusinessException.class)
             .extracting(exception -> ((BusinessException) exception).getErrorCode())
             .isEqualTo(ErrorCode.UNAUTHORIZED);
