@@ -362,6 +362,23 @@ class VoteControllerTest {
             .andExpect(jsonPath("$.code").value("ALREADY_VOTED"));
     }
 
+    @DisplayName("같은 투표의 다른 요청을 처리 중이면 표 제출을 충돌로 안내한다")
+    @Test
+    void submitBallotWhileVoteIsProcessing() throws Exception {
+        // given
+        given(voteService.submitBallot(eq(2L), eq(10L), any()))
+            .willThrow(new BusinessException(ErrorCode.VOTE_PROCESSING));
+
+        // when & then
+        mockMvc.perform(post("/api/v1/votes/10/ballots/me")
+                .header("X-User-Id", "2")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"candidateId\":21,\"nickname\":\"테스트1\"}"))
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.success").value(false))
+            .andExpect(jsonPath("$.code").value("VOTE_PROCESSING"));
+    }
+
     @DisplayName("생성자가 투표를 종료하면 종료 메시지와 최신 투표 현황을 반환한다")
     @Test
     void closeVote() throws Exception {
@@ -389,6 +406,20 @@ class VoteControllerTest {
             .andExpect(status().isConflict())
             .andExpect(jsonPath("$.success").value(false))
             .andExpect(jsonPath("$.code").value("VOTE_ALREADY_CLOSED"));
+    }
+
+    @DisplayName("같은 투표의 다른 요청을 처리 중이면 투표 종료를 충돌로 안내한다")
+    @Test
+    void closeVoteWhileVoteIsProcessing() throws Exception {
+        // given
+        given(voteService.closeVote(1L, 10L))
+            .willThrow(new BusinessException(ErrorCode.VOTE_PROCESSING));
+
+        // when & then
+        mockMvc.perform(patch("/api/v1/votes/10/close").header("X-User-Id", "1"))
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.success").value(false))
+            .andExpect(jsonPath("$.code").value("VOTE_PROCESSING"));
     }
 
     private MockHttpServletRequestBuilder createVoteRequest() {

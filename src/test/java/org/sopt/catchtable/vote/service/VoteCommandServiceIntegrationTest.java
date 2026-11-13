@@ -12,6 +12,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.sopt.catchtable.fixture.EntityFixture;
@@ -31,6 +32,8 @@ import org.sopt.catchtable.vote.repository.VoteCandidateRepository;
 import org.sopt.catchtable.vote.repository.VoteRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * 각 호출이 별도 스레드·별도 트랜잭션에서 실행되도록 하여 Vote 행 잠금과 DB 유니크 제약을 검증한다.
@@ -39,7 +42,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 @SpringBootTest
 class VoteCommandServiceIntegrationTest {
 
-    private static final long AWAIT_SECONDS = 5;
+    private static final long AWAIT_SECONDS = 10;
+    private static final long LOCK_HOLD_SECONDS = 5;
 
     @Autowired
     private VoteCommandService voteCommandService;
@@ -59,10 +63,20 @@ class VoteCommandServiceIntegrationTest {
     @Autowired
     private StoreRepository storeRepository;
 
+    @Autowired
+    private PlatformTransactionManager transactionManager;
+
+    private TransactionTemplate transactionTemplate;
+
     private final List<Long> candidateIds = new ArrayList<>();
     private final List<Long> voteIds = new ArrayList<>();
     private final List<Long> storeIds = new ArrayList<>();
     private final List<Long> userIds = new ArrayList<>();
+
+    @BeforeEach
+    void setUp() {
+        transactionTemplate = new TransactionTemplate(transactionManager);
+    }
 
     @AfterEach
     void tearDown() {
@@ -135,6 +149,40 @@ class VoteCommandServiceIntegrationTest {
         assertThat(ballots).hasSize(submission.success() ? 1 : 0);
     }
 
+    @DisplayName("Vote 행 잠금을 3초 내 얻지 못하면 VOTE_PROCESSING으로 거절된다")
+    @Test
+    void voteLockTimeout() throws Exception {
+        // given
+        User host = saveUser("생성자");
+        User voter = saveUser("참여자");
+        Vote vote = saveVote(host);
+        VoteCandidate candidate = saveCandidate(vote, saveStore("첫 번째 매장"), 1);
+        SubmitBallotRequest request = new SubmitBallotRequest(candidate.getId(), "참여자");
+        CountDownLatch lockAcquired = new CountDownLatch(1);
+        CountDownLatch releaseLock = new CountDownLatch(1);
+        ExecutorService lockHolderExecutor = Executors.newSingleThreadExecutor();
+        Future<?> lockHolder = lockHolderExecutor.submit(() -> transactionTemplate.executeWithoutResult(status -> {
+            voteRepository.findByIdForUpdate(vote.getId()).orElseThrow();
+            lockAcquired.countDown();
+            waitForRelease(releaseLock);
+        }));
+
+        try {
+            assertThat(lockAcquired.await(AWAIT_SECONDS, TimeUnit.SECONDS)).isTrue();
+
+            // when
+            CommandResult result = submitBallot(voter, vote.getId(), request);
+
+            // then
+            assertThat(result).isEqualTo(CommandResult.failureResult(ErrorCode.VOTE_PROCESSING));
+            assertThat(ballotRepository.findAllByVoteIdOrderByCreatedAtDescIdDesc(vote.getId())).isEmpty();
+        } finally {
+            releaseLock.countDown();
+            lockHolder.get(AWAIT_SECONDS, TimeUnit.SECONDS);
+            lockHolderExecutor.shutdownNow();
+        }
+    }
+
     @SafeVarargs
     private final List<CommandResult> runConcurrently(Callable<CommandResult>... commands) throws Exception {
         ExecutorService executor = Executors.newFixedThreadPool(commands.length);
@@ -181,6 +229,15 @@ class VoteCommandServiceIntegrationTest {
             return CommandResult.successResult();
         } catch (BusinessException exception) {
             return CommandResult.failureResult(exception.getErrorCode());
+        }
+    }
+
+    private void waitForRelease(CountDownLatch latch) {
+        try {
+            latch.await(LOCK_HOLD_SECONDS, TimeUnit.SECONDS);
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("잠금 대기 중 인터럽트되었습니다.", exception);
         }
     }
 

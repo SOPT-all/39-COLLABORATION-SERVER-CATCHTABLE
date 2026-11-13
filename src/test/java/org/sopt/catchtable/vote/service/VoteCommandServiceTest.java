@@ -30,6 +30,7 @@ import org.sopt.catchtable.vote.dto.request.SubmitBallotRequest;
 import org.sopt.catchtable.vote.repository.BallotRepository;
 import org.sopt.catchtable.vote.repository.VoteCandidateRepository;
 import org.sopt.catchtable.vote.repository.VoteRepository;
+import org.springframework.dao.PessimisticLockingFailureException;
 
 class VoteCommandServiceTest {
 
@@ -121,6 +122,23 @@ class VoteCommandServiceTest {
         then(ballotRepository).should(never()).save(any());
     }
 
+    @DisplayName("Vote 행 잠금을 제한 시간 내 얻지 못하면 요청 처리 중으로 안내한다")
+    @Test
+    void submitBallotWhenVoteLockTimesOut() {
+        // given
+        given(voteRepository.findByIdForUpdate(10L))
+            .willThrow(new PessimisticLockingFailureException("vote lock timeout"));
+
+        // when & then
+        assertError(
+            () -> voteCommandService.submitBallot(userWithId(2L), 10L, new SubmitBallotRequest(21L, "테스트1")),
+            ErrorCode.VOTE_PROCESSING
+        );
+
+        then(voteCandidateRepository).should(never()).findByIdAndVoteId(any(), any());
+        then(ballotRepository).should(never()).save(any());
+    }
+
     @DisplayName("공백뿐인 닉네임은 거절한다")
     @Test
     void submitBallotWithBlankNickname() {
@@ -172,6 +190,17 @@ class VoteCommandServiceTest {
 
         // when & then
         assertError(() -> voteCommandService.closeVote(host, 10L), ErrorCode.VOTE_ALREADY_CLOSED);
+    }
+
+    @DisplayName("투표 종료 중 Vote 행 잠금을 제한 시간 내 얻지 못하면 요청 처리 중으로 안내한다")
+    @Test
+    void closeVoteWhenVoteLockTimesOut() {
+        // given
+        given(voteRepository.findByIdForUpdate(10L))
+            .willThrow(new PessimisticLockingFailureException("vote lock timeout"));
+
+        // when & then
+        assertError(() -> voteCommandService.closeVote(userWithId(1L), 10L), ErrorCode.VOTE_PROCESSING);
     }
 
     private void prepareOpenVoteForSubmission() {
