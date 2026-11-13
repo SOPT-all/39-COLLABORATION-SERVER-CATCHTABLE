@@ -17,10 +17,13 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.TimeZone;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.sopt.catchtable.store.dto.response.StoreDetailResponse;
 import org.sopt.catchtable.user.domain.User;
 import org.sopt.catchtable.vote.domain.Ballot;
@@ -217,6 +220,26 @@ class VoteDetailResponseTest {
             .isInstanceOf(IllegalStateException.class)
             .hasMessageContaining("candidateId=22")
             .hasMessageContaining("storeId=5");
+    }
+
+    @DisplayName("후보가 2개가 아닌 투표는 응답을 만들지 않고, 투표 ID와 실제 후보 수를 알려준다")
+    @ParameterizedTest(name = "후보 {0}개")
+    @MethodSource("wrongCandidateCounts")
+    void wrongCandidateCount(int candidateCount) {
+        // given
+        List<VoteCandidate> candidates = Stream.of(first, second, candidateWithId(23L, vote, storeWithId(7L), 3))
+            .limit(candidateCount)
+            .toList();
+
+        // when & then
+        assertThatThrownBy(() -> VoteDetailResponse.of(vote, host, candidates, List.of(), storeDetails))
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessageContaining("voteId=10")
+            .hasMessageContaining("candidateCount=" + candidateCount);
+    }
+
+    private static Stream<Integer> wrongCandidateCounts() {
+        return Stream.of(0, 1, 3);
     }
 
     private User user(Long id, String nickname) {

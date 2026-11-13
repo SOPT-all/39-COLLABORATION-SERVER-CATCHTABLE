@@ -27,7 +27,7 @@ public record VoteDetailResponse(
 ) {
 
     /**
-     * @param candidates       displayOrder 오름차순으로 정렬된 후보
+     * @param candidates       displayOrder 오름차순으로 정렬된 후보. 개수가 Vote.CANDIDATE_COUNT가 아니면 IllegalStateException
      * @param ballots          해당 투표의 모든 표. 이 순서가 후보별 투표자 순서가 된다
      * @param storeDetailsById 후보 매장 ID별 매장 정보. 후보 매장이 하나라도 없으면 IllegalStateException
      */
@@ -38,6 +38,8 @@ public record VoteDetailResponse(
         List<Ballot> ballots,
         Map<Long, StoreDetailResponse> storeDetailsById
     ) {
+        validateCandidateCount(vote, candidates);
+
         Map<Long, List<Ballot>> ballotsByCandidateId = ballots.stream()
             .collect(Collectors.groupingBy(ballot -> ballot.getCandidate().getId()));
 
@@ -61,6 +63,16 @@ public record VoteDetailResponse(
             VoteResponseTimes.toSeoulOffsetDateTime(vote.getCreatedAt()),
             VoteResponseTimes.toSeoulOffsetDateTime(vote.getClosedAt())
         );
+    }
+
+    // 투표 후보는 생성 시 항상 2개로 저장된다 (Vote.CANDIDATE_COUNT).
+    // 다르다면 데이터 정합성 문제이므로 명세("항상 2개")와 다른 응답을 200으로 내보내지 않고 실패한다 (500)
+    private static void validateCandidateCount(Vote vote, List<VoteCandidate> candidates) {
+        if (candidates.size() != Vote.CANDIDATE_COUNT) {
+            throw new IllegalStateException(
+                "투표 후보 수가 올바르지 않습니다. voteId=" + vote.getId() + ", candidateCount=" + candidates.size()
+            );
+        }
     }
 
     public record CandidateDetailResponse(
