@@ -28,14 +28,14 @@ public class VoteService {
 
     @Transactional
     public CreateVoteResponse createVote(Long userId, CreateVoteRequest request) {
-        // DB 조회가 필요 없는 검증을 먼저 해서 잘못된 요청에는 쿼리를 보내지 않는다
+        // DB 조회 없이 할 수 있는 검증을 먼저 해서, 잘못된 요청에는 쿼리를 보내지 않음
         List<Long> storeIds = request.storeIds();
         Vote.validateCandidateStoreIds(storeIds);
 
         User hostUser = userService.getAuthorizedUser(userId);
         Map<Long, Store> storesById = storeService.getStoresByIds(storeIds);
 
-        // 조회 결과는 순서가 없으므로 요청 순서대로 다시 나열한다
+        // 조회 결과는 순서가 없으므로 요청 순서대로 재정렬
         List<Store> stores = storeIds.stream()
             .map(storesById::get)
             .toList();

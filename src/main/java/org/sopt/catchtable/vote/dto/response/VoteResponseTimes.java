@@ -13,15 +13,14 @@ final class VoteResponseTimes {
     private VoteResponseTimes() {
     }
 
-    // 저장된 LocalDateTime은 JVM 시간대 기준이라, 그 시간대로 해석한 뒤 서울 시각으로 바꾼다 (JVM이 UTC여도 +09:00)
+    // DB 시각은 KST 기준으로 저장되므로(CatchtableApplication) 서버 시간대와 관계없이 서울 시각으로 해석한다
     // 초 단위로 자르고, null(진행 중 투표의 closedAt)은 그대로 돌려준다
     static OffsetDateTime toSeoulOffsetDateTime(LocalDateTime dateTime) {
         if (dateTime == null) {
             return null;
         }
         return dateTime.truncatedTo(ChronoUnit.SECONDS)
-            .atZone(ZoneId.systemDefault())
-            .withZoneSameInstant(SEOUL)
+            .atZone(SEOUL)
             .toOffsetDateTime();
     }
 }

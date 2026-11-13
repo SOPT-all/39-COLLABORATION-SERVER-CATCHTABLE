@@ -3,7 +3,11 @@ package org.sopt.catchtable.vote.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
+import static org.assertj.core.api.Assertions.within;
 
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
@@ -29,16 +33,14 @@ import org.springframework.boot.test.context.SpringBootTest;
 /**
  * 투표 생성이 실제 DB에 어떻게 저장되는지 검증하는 통합 테스트.
  *
- * 테스트에 @Transactional을 붙이지 않는다.
- * 붙이면 VoteService에 @Transactional이 빠져도 테스트 트랜잭션에 참여해서 통과해 버리기 때문이다.
- * 대신 테스트가 끝나면 이 테스트가 만든 데이터만 골라서 지운다 (외래키 때문에 자식 테이블부터).
- * 테이블 전체를 지우지 않으므로, 연결한 DB에 원래 있던 데이터는 건드리지 않는다.
- * 같은 이유로 검증도 테이블 전체가 아니라 이 테스트가 만든 사용자·매장과 연결된 데이터만 본다.
+ * @Transactional을 붙이면 VoteService에 @Transactional이 빠져도 테스트 트랜잭션에 참여해 통과하므로 붙이지 않는다.
+ * 대신 이 테스트가 만든 데이터만 골라서 지우고(외래키 때문에 자식 테이블부터), 검증도 그 데이터만 본다.
+ * 그래서 연결한 DB에 원래 있던 데이터는 건드리지 않는다.
  */
 @SpringBootTest
 class VoteServiceIntegrationTest {
 
-    // DB에 존재할 수 없는 ID (자동 증가 ID가 여기까지 도달하지 않는다)
+    // DB에 존재할 수 없는 ID (자동 증가 ID가 여기까지 도달하지 않음)
     private static final Long NON_EXISTENT_ID = Long.MAX_VALUE;
 
     @Autowired
@@ -100,6 +102,25 @@ class VoteServiceIntegrationTest {
             );
     }
 
+    @DisplayName("투표 생성 시각은 서버 실행 환경과 관계없이 KST로 저장되고, 응답도 같은 시각을 돌려준다")
+    @Test
+    void createdAtIsStoredInKst() {
+        // given
+        User hostUser = saveUser("생성자");
+        Store first = saveStore("첫 번째 매장");
+        Store second = saveStore("두 번째 매장");
+        CreateVoteRequest request = new CreateVoteRequest(List.of(first.getId(), second.getId()));
+
+        // when
+        CreateVoteResponse response = voteService.createVote(hostUser.getId(), request);
+
+        // then
+        LocalDateTime storedCreatedAt = voteRepository.findById(response.voteId()).orElseThrow().getCreatedAt();
+        LocalDateTime nowInKst = LocalDateTime.now(ZoneId.of("Asia/Seoul"));
+        assertThat(storedCreatedAt).isCloseTo(nowInKst, within(1, ChronoUnit.MINUTES));
+        assertThat(response.createdAt().toLocalDateTime()).isEqualTo(storedCreatedAt.withNano(0));
+    }
+
     @DisplayName("존재하지 않는 매장이 후보에 있으면 투표와 후보 모두 저장되지 않는다")
     @Test
     void createVoteWithUnknownStore() {
@@ -156,7 +177,7 @@ class VoteServiceIntegrationTest {
             .toList();
     }
 
-    // 이 테스트가 만든 매장을 후보로 가진 후보 (투표 생성자와 관계없이 남은 후보까지 포함)
+    // 이 테스트가 만든 매장을 가리키는 후보 (투표 생성자와 관계없이 모두 포함)
     private List<VoteCandidate> createdCandidates() {
         return voteCandidateRepository.findAll().stream()
             .filter(candidate -> createdStoreIds.contains(candidate.getStore().getId()))

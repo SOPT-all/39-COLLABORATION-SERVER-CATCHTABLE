@@ -55,8 +55,7 @@ public class GlobalExceptionHandler {
         ));
     }
 
-    // X-User-Id가 숫자가 아니면 헤더가 없을 때와 같이 사용자를 식별할 수 없으므로 401
-    // 그 외 경로 변수·쿼리 파라미터 형식 오류는 400
+    // X-User-Id 형식 오류는 헤더가 없을 때처럼 사용자를 식별할 수 없으므로 401, 그 외 형식 오류는 400
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<?> handleTypeMismatch(
         MethodArgumentTypeMismatchException exception,
@@ -103,8 +102,7 @@ public class GlobalExceptionHandler {
         return failure(ErrorCode.INVALID_REQUEST, extractValidationErrors(exception));
     }
 
-    // 클라이언트의 잘못된 경로·메서드·Content-Type 요청
-    // 서버 오류가 아니므로 500 대신 알맞은 4xx로 응답하고, 스택트레이스 없이 warn으로만 남긴다
+    // 잘못된 경로·메서드·Content-Type은 클라이언트 오류이므로 4xx로 응답하고 warn 로그만 남긴다 (스택트레이스 X)
     @ExceptionHandler(NoResourceFoundException.class)
     public ResponseEntity<BaseResponse<Void>> handleNoResourceFound(
         NoResourceFoundException exception,
@@ -156,7 +154,7 @@ public class GlobalExceptionHandler {
         Exception exception,
         HttpServletRequest request
     ) {
-        // 원인 추적을 위해 스택트레이스는 서버 로그에만 남기고, 응답에는 공통 메시지만 내린다
+        // 스택트레이스는 원인 추적용으로 로그에만 남기고, 응답에는 공통 메시지만 내린다
         log.error("Unexpected server error: {} {}", request.getMethod(), request.getRequestURI(), exception);
         return internalServerError();
     }
@@ -216,7 +214,7 @@ public class GlobalExceptionHandler {
         return List.of();
     }
 
-    // 같은 이름의 경로 변수·쿼리 파라미터와 구분하기 위해 @RequestHeader로 받은 값인지까지 확인
+    // 같은 이름의 경로 변수·쿼리 파라미터와 구분하려고 @RequestHeader 여부까지 확인
     private boolean isUserIdHeader(MethodArgumentTypeMismatchException exception) {
         return USER_ID_HEADER.equalsIgnoreCase(exception.getName())
             && exception.getParameter().hasParameterAnnotation(RequestHeader.class);

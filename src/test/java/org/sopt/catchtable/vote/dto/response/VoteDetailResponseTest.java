@@ -51,7 +51,7 @@ class VoteDetailResponseTest {
 
     @BeforeEach
     void setUp() {
-        // 시각 변환 결과를 고정하려고 서버 시간대를 서울로 맞춘다
+        // 테스트마다 서버 시간대를 바꿀 수 있으므로 원래 값을 기억해 두고 되돌린다
         originalTimeZone = TimeZone.getDefault();
         TimeZone.setDefault(TimeZone.getTimeZone("Asia/Seoul"));
 
@@ -240,6 +240,21 @@ class VoteDetailResponseTest {
 
     private static Stream<Integer> wrongCandidateCounts() {
         return Stream.of(0, 1, 3);
+    }
+
+    @DisplayName("DB에 저장된 KST 시각은 서버 시간대가 UTC여도 같은 서울 시각으로 응답한다")
+    @Test
+    void timesOnUtcServer() {
+        // given
+        TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
+        Vote closed = closedVote(10L, host, CREATED_AT, LocalDateTime.of(2026, 11, 6, 21, 0, 5));
+
+        // when
+        VoteDetailResponse response = VoteDetailResponse.of(closed, host, List.of(first, second), List.of(), storeDetails);
+
+        // then
+        assertThat(response.createdAt()).isEqualTo(OffsetDateTime.of(2026, 11, 6, 19, 30, 0, 0, ZoneOffset.ofHours(9)));
+        assertThat(response.closedAt()).isEqualTo(OffsetDateTime.of(2026, 11, 6, 21, 0, 5, 0, ZoneOffset.ofHours(9)));
     }
 
     private User user(Long id, String nickname) {

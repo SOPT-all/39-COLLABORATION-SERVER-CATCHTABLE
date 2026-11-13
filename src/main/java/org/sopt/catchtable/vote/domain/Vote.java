@@ -78,7 +78,7 @@ public class Vote extends BaseEntity {
         }
     }
 
-    // 이 투표의 후보를 만든다. 넘겨받은 순서대로 displayOrder 1, 2를 매긴다
+    // 넘겨받은 순서대로 displayOrder 1, 2를 매겨 후보 생성
     public List<VoteCandidate> createCandidates(List<Store> stores) {
         validateCandidateStoreIds(stores == null ? null : stores.stream()
             .map(store -> store == null ? null : store.getId())

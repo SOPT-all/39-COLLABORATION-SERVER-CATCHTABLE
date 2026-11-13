@@ -36,9 +36,8 @@ public class StoreService {
     private final StoreAiSummaryRepository storeAiSummaryRepository;
     private final StoreAmenityRepository storeAmenityRepository;
 
-    // 여러 매장을 한 번에 조회, 하나라도 없으면 STORE_NOT_FOUND
-    // findAllByIdIn은 결과 순서를 보장하지 않으므로 ID로 찾을 수 있게 Map으로 반환
-    // 같은 ID가 여러 번 들어와도 호출하는 쪽에 기대지 않도록 중복을 없앤 뒤 비교한다
+    // 일괄 조회: 중복 ID를 제거하고 조회, 하나라도 없으면 STORE_NOT_FOUND
+    // findAllByIdIn은 순서를 보장하지 않으므로 ID로 찾을 수 있게 Map으로 반환
     public Map<Long, Store> getStoresByIds(Collection<Long> storeIds) {
         Set<Long> uniqueStoreIds = new HashSet<>(storeIds);
 
